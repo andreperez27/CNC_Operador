@@ -1,0 +1,23 @@
+:root {
+  --bg:        #0a0c0f;
+  --bg1:       #111520;
+  --bg2:       #181e2a;
+  --bg3:       #1e2535;
+  --border:    #1e2d42;
+  --border2:   #2a3f5a;
+  --accent:    #f0a500;
+  --accent2:   #d4891a;
+  --glow:      rgba(240,165,0,.18);
+  --green:     #22c55e;
+  --green2:    #16a34a;
+  --red:       #ef4444;
+  --blue:      #38bdf8;
+  --orange:    #fb923c;
+  --text:      #e2e8f2;
+  --text2:     #7a92b0;
+  --text3:     #3a4f68;
+  --mono:      'Share Tech Mono', monospace;
+  --display:   'Oswald', sans-serif;
+  --body:      'Rajdhani', sans-serif;
+  --r:         6px;
+}

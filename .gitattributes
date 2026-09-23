@@ -1,0 +1,4 @@
+# Normalização de fim de linha: automática, exceto fixtures de paridade,
+# que devem permanecer byte-idênticos (teste productionReference).
+* text=auto
+tests/fixtures/*.H -text

@@ -1,0 +1,45 @@
+.panel {
+  background: #0e1218;
+  border: 1px solid #1a2a3a;
+  border-radius: 6px;
+  padding: 12px;
+}
+
+.title {
+  font-family: 'Share Tech Mono', monospace;
+  font-size: 11px;
+  font-weight: bold;
+  color: #3a5f7a;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  margin-bottom: 10px;
+}
+
+.grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+
+.btn {
+  background: transparent;
+  border: 1px solid #1a2a3a;
+  border-radius: 4px;
+  padding: 3px 8px;
+  font-family: 'Share Tech Mono', monospace;
+  font-size: 10px;
+  color: #4a6a8a;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+
+.btn:hover {
+  border-color: #3a5f7a;
+  color: #6a8aaa;
+}
+
+.on {
+  background: rgba(56, 189, 248, 0.1);
+  border-color: #38bdf8;
+  color: #38bdf8;
+}

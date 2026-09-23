@@ -1,0 +1,41 @@
+.nav {
+  display: flex;
+  overflow-x: auto;
+  gap: 0;
+  background: var(--bg1);
+  border-bottom: 1px solid var(--border);
+  scrollbar-width: none;
+  padding-left: env(safe-area-inset-left);
+  padding-right: env(safe-area-inset-right);
+}
+
+.nav::-webkit-scrollbar {
+  display: none;
+}
+
+.btn {
+  flex: 0 0 auto;
+  border: none;
+  background: transparent;
+  color: var(--text2);
+  font-family: var(--display);
+  font-size: .75rem;
+  letter-spacing: 1.5px;
+  text-transform: uppercase;
+  padding: 14px 16px;
+  min-height: 48px;
+  cursor: pointer;
+  border-bottom: 2px solid transparent;
+  transition: all .15s;
+  white-space: nowrap;
+}
+
+.btn.on {
+  color: var(--accent);
+  border-bottom-color: var(--accent);
+  background: rgba(240,165,0,.05);
+}
+
+.btn:active {
+  background: var(--bg2);
+}

@@ -1,0 +1,502 @@
+.page {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  padding: 14px;
+  max-width: 1200px;
+  margin: 0 auto;
+}
+
+.header {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.title {
+  font-size: 18px;
+  color: #e6edf3;
+  margin: 0;
+}
+
+.subtitle {
+  font-size: 13px;
+  color: #5d7a96;
+  margin: 0;
+  max-width: 80ch;
+}
+
+/* ── seções ── */
+.section {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.sectionTitle {
+  font-size: 14px;
+  font-weight: 600;
+  color: #e6edf3;
+}
+
+.sectionHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.sectionHint {
+  font-size: 12px;
+  color: #5d7a96;
+}
+
+/* ── seleção ── */
+.selector {
+  background: #0d1117;
+  border: 1px solid #21262d;
+  border-radius: 6px;
+  padding: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.selectorGrid {
+  display: grid;
+  grid-template-columns: 200px 1fr;
+  gap: 10px;
+}
+
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+}
+
+.label {
+  font-size: 12px;
+  color: #8b9cb0;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 18px;
+}
+
+.input {
+  width: 100%;
+  height: 40px;
+  box-sizing: border-box;
+  padding: 8px 10px;
+  background: #0a0e14;
+  color: #dbe6f0;
+  border: 1px solid #2a3040;
+  border-radius: 4px;
+  font-family: 'Share Tech Mono', monospace;
+  font-size: 14px;
+}
+
+.input:focus {
+  outline: none;
+  border-color: #38bdf8;
+}
+
+.fieldError .input {
+  border-color: #e5534b;
+}
+
+.fieldError .label {
+  color: #f0887e;
+}
+
+.msg {
+  font-size: 11px;
+  color: #f0887e;
+  word-break: break-word;
+}
+
+/* ── selecionada + resultados de busca ── */
+.selectedRow {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.selectedChip {
+  min-height: 36px;
+  padding: 8px 14px;
+  background: #1e3048;
+  color: #38bdf8;
+  border: 1px solid #38bdf8;
+  border-radius: 4px;
+  font-family: 'Share Tech Mono', monospace;
+  font-size: 14px;
+  cursor: default;
+}
+
+.selectedHint {
+  font-size: 12px;
+  color: #5d7a96;
+}
+
+.linkBtn {
+  background: none;
+  border: none;
+  color: #38bdf8;
+  font-family: inherit;
+  font-size: 13px;
+  cursor: pointer;
+  padding: 6px;
+}
+
+.linkBtn:hover {
+  text-decoration: underline;
+}
+
+.matches {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.matchLabel {
+  font-size: 12px;
+  color: #5d7a96;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.noMatch {
+  font-size: 13px;
+  color: #f0887e;
+}
+
+.matchBtn {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  min-height: 42px;
+  padding: 8px 12px;
+  background: #161b22;
+  border: 1px solid #2a3040;
+  border-radius: 4px;
+  color: #dbe6f0;
+  cursor: pointer;
+  font-family: inherit;
+  transition: all 0.15s;
+  text-align: left;
+}
+
+.matchBtn:hover {
+  background: #1e3048;
+  border-color: #38bdf8;
+}
+
+.matchName {
+  font-family: 'Share Tech Mono', monospace;
+  font-size: 14px;
+}
+
+.matchMeta {
+  font-size: 12px;
+  color: #5d7a96;
+}
+
+/* ── detalhe da rosca ── */
+.detail {
+  background: #0d1117;
+  border: 1px solid #21262d;
+  border-radius: 6px;
+  padding: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.detailHeader {
+  border-bottom: 1px solid #21262d;
+  padding-bottom: 8px;
+}
+
+.detailTitle {
+  color: #f0a500;
+  font-weight: 600;
+  font-size: 15px;
+}
+
+.detailGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 8px;
+}
+
+.detailRow {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 8px 10px;
+  background: #161b22;
+  border-radius: 4px;
+}
+
+.detailKey {
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: #5d7a96;
+}
+
+.detailValue {
+  font-size: 14px;
+  color: #dbe6f0;
+  word-break: break-word;
+}
+
+.vcRow {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.vcLabel {
+  font-size: 12px;
+  color: #5d7a96;
+}
+
+.vcChip {
+  font-size: 12px;
+  padding: 4px 10px;
+  border: 1px solid #2a4560;
+  border-radius: 999px;
+  color: #8ab4d0;
+  background: #13202e;
+}
+
+/* ── trabalho (form + preview) ── */
+.workRow {
+  display: flex;
+  gap: 14px;
+  align-items: flex-start;
+}
+
+.workFormCol {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  min-width: 0;
+}
+
+.workPreviewCol {
+  width: 46%;
+  min-width: 0;
+}
+
+.form {
+  background: #0d1117;
+  border: 1px solid #21262d;
+  border-radius: 6px;
+  padding: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.sectionLabel {
+  font-size: 12px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: #5d7a96;
+}
+
+.grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+}
+
+.badgeOk {
+  color: #3fb950;
+  font-size: 12px;
+}
+
+.badgeX {
+  color: #f85149;
+  font-size: 12px;
+}
+
+.infoBox {
+  border: 1px dashed #2a3040;
+  border-radius: 4px;
+  padding: 8px 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.infoRow {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+  font-size: 12px;
+}
+
+.infoLabel {
+  color: #5d7a96;
+}
+
+.infoValue {
+  color: #8ab4d0;
+  text-align: right;
+}
+
+/* ── preview ── */
+.previewBox {
+  background: #0d1117;
+  border: 1px solid #21262d;
+  border-radius: 6px;
+  padding: 10px;
+}
+
+.previewEmpty {
+  color: #5d7a96;
+  font-size: 13px;
+  text-align: center;
+  padding: 40px 10px;
+}
+
+/* ── furo cego — regra de processo ── */
+.threadInfoGrid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 6px;
+  border: 1px solid #21262d;
+  border-radius: 4px;
+  padding: 8px;
+  background: #161b22;
+}
+
+.customRuleRow {
+  display: grid;
+  grid-template-columns: 120px 1fr;
+  gap: 8px;
+}
+
+.suggestedBox {
+  border: 1px dashed #2a4560;
+  border-radius: 4px;
+  padding: 8px 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  background: #10151c;
+}
+
+.suggestedValue {
+  font-family: 'Share Tech Mono', monospace;
+  font-size: 16px;
+  color: #f0a500;
+  text-align: right;
+}
+
+.suggestNote {
+  font-size: 11px;
+  color: #8ab4d0;
+  line-height: 1.4;
+}
+
+.ruleHint {
+  font-size: 10px;
+  color: #5d7a96;
+}
+
+.finalDepthRow {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 8px;
+  align-items: end;
+}
+
+.miniBtn {
+  height: 40px;
+  padding: 0 12px;
+  background: #13202e;
+  color: #8ab4d0;
+  border: 1px solid #2a4560;
+  border-radius: 4px;
+  font-family: inherit;
+  font-size: 12px;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.miniBtn:hover:not(:disabled) {
+  border-color: #38bdf8;
+  color: #38bdf8;
+}
+
+.miniBtn:disabled {
+  opacity: 0.45;
+  cursor: default;
+}
+
+.holeHint {
+  font-size: 11px;
+  color: #5d7a96;
+}
+
+/* ── responsivo ── */
+@media (max-width: 900px) {
+  .workRow {
+    flex-direction: column;
+  }
+
+  .workPreviewCol {
+    width: 100%;
+  }
+}
+
+@media (max-width: 560px) {
+  .page {
+    padding: 10px;
+  }
+
+  .selectorGrid {
+    grid-template-columns: 1fr;
+  }
+
+  .grid {
+    grid-template-columns: 1fr;
+  }
+
+  .detailGrid {
+    grid-template-columns: 1fr 1fr;
+  }
+
+  .matchBtn {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .threadInfoGrid {
+    grid-template-columns: 1fr;
+  }
+
+  .customRuleRow {
+    grid-template-columns: 1fr;
+  }
+
+  .finalDepthRow {
+    grid-template-columns: 1fr;
+  }
+
+  .miniBtn {
+    width: 100%;
+  }
+}

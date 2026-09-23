@@ -1,0 +1,46 @@
+.panel {
+  background: var(--bg1);
+  border: 1px solid var(--border);
+  border-radius: var(--r);
+  padding: 14px;
+  margin-bottom: 12px;
+  overflow: hidden;
+}
+
+.header {
+  font-family: var(--display);
+  font-size: .85rem;
+  letter-spacing: 1.5px;
+  text-transform: uppercase;
+  color: var(--accent);
+  margin-bottom: 8px;
+}
+
+.svg {
+  width: 100%;
+  height: auto;
+  max-height: 280px;
+  display: block;
+  border-radius: 4px;
+}
+
+.placeholder {
+  font-family: var(--mono);
+  font-size: .78rem;
+  color: var(--text3);
+  text-align: center;
+  padding: 40px 20px;
+  line-height: 1.6;
+}
+
+.legend {
+  margin-top: 8px;
+  padding: 6px 10px;
+  background: rgba(240,165,0,.08);
+  border-left: 3px solid var(--accent);
+  border-radius: 0 3px 3px 0;
+  font-family: var(--mono);
+  font-size: .72rem;
+  color: var(--accent);
+  letter-spacing: 0.5px;
+}

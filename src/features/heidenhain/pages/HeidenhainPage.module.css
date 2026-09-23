@@ -1,0 +1,100 @@
+.page {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  padding: 14px;
+  max-width: 1200px;
+  margin: 0 auto;
+}
+
+.topSection {
+  display: flex;
+  gap: 14px;
+  align-items: flex-start;
+}
+
+.previewCol {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  min-width: 0;
+}
+
+.sideCol {
+  width: 340px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  flex-shrink: 0;
+}
+
+.opSelector {
+  display: flex;
+  gap: 6px;
+}
+
+.opBtn {
+  background: #1a1d24;
+  color: #6a8aaa;
+  border: 1px solid #2a3040;
+  padding: 10px 16px;
+  min-height: 44px;
+  border-radius: 4px;
+  cursor: pointer;
+  font-family: inherit;
+  font-size: 14px;
+  transition: all 0.15s;
+}
+
+.opBtn:hover {
+  background: #242830;
+  color: #8ab4d0;
+}
+
+.opBtnActive {
+  background: #1e3048;
+  color: #38bdf8;
+  border-color: #38bdf8;
+}
+
+.opBtn:active {
+  background: var(--bg2);
+}
+
+.placeholder {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 280px;
+  background: #0a0c0f;
+  border: 1px dashed #2a3040;
+  border-radius: 6px;
+  color: #4a6a8a;
+  font-size: 13px;
+  padding: 20px;
+}
+
+.programSection {
+  width: 100%;
+}
+
+@media (max-width: 900px) {
+  .topSection {
+    flex-direction: column;
+  }
+
+  .sideCol {
+    width: 100%;
+  }
+
+  .opSelector {
+    flex-wrap: wrap;
+  }
+}
+
+@media (max-width: 480px) {
+  .page {
+    padding: 10px;
+  }
+}

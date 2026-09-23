@@ -1,0 +1,42 @@
+.header {
+  background: linear-gradient(90deg, #0a0c0f 0%, #111825 100%);
+  border-bottom: 2px solid var(--accent);
+  padding: 10px 16px;
+  padding-top: calc(10px + env(safe-area-inset-top));
+  padding-left: calc(16px + env(safe-area-inset-left));
+  padding-right: calc(16px + env(safe-area-inset-right));
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  position: sticky;
+  top: 0;
+  z-index: 100;
+  box-shadow: 0 2px 30px rgba(0,0,0,.7);
+}
+
+.logo {
+  font-family: var(--display);
+  font-size: 1.25rem;
+  letter-spacing: 3px;
+  color: var(--accent);
+  text-transform: uppercase;
+}
+
+.sub {
+  font-family: var(--mono);
+  font-size: .6rem;
+  color: var(--text2);
+  letter-spacing: 1.5px;
+  margin-top: 1px;
+}
+
+.badge {
+  font-family: var(--mono);
+  font-size: .6rem;
+  background: var(--accent);
+  color: #000;
+  padding: 3px 9px;
+  border-radius: 2px;
+  font-weight: 700;
+  letter-spacing: 1px;
+}

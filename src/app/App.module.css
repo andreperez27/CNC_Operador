@@ -1,0 +1,28 @@
+.app {
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh;
+  min-height: 100dvh;
+}
+
+.main {
+  flex: 1;
+  padding: 14px;
+  padding-bottom: calc(14px + env(safe-area-inset-bottom));
+  width: 100%;
+  animation: fadeIn .2s ease;
+}
+
+.loading {
+  padding: 40px 0;
+  text-align: center;
+  font-family: var(--mono);
+  font-size: .8rem;
+  letter-spacing: 2px;
+  color: var(--text2);
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(6px); }
+  to   { opacity: 1; transform: none; }
+}
