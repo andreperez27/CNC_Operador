@@ -9,11 +9,15 @@ export function useCopyToClipboard() {
       setCopied(true);
       setTimeout(() => setCopied(false), 1800);
     } catch {
-      // fallback
+      // fallback (funciona em contexto não-HTTPS e iOS antigo)
       const ta = document.createElement('textarea');
       ta.value = text;
+      ta.readOnly = true;
+      ta.style.position = 'fixed';
+      ta.style.opacity = '0';
       document.body.appendChild(ta);
       ta.select();
+      ta.setSelectionRange(0, ta.value.length);
       document.execCommand('copy');
       document.body.removeChild(ta);
       setCopied(true);
