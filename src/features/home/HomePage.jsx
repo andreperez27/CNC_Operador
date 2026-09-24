@@ -43,7 +43,7 @@ const MODULES = [
   { id: 'roscas', title: 'Roscas', sub: 'Tabela métrica + programa .H', Icon: RoscaIcon },
   { id: 'trigonometria', title: 'Trigonometria', sub: 'Triângulo retângulo', Icon: TrianguloIcon },
   { id: 'gcoderapido', title: 'G-Code Rápido', sub: 'Chanfro e raio ext./int.', Icon: GcodeIcon },
-  { id: 'huron', title: 'Cabeçote Huron', sub: 'Flanges do Portal Feller', Icon: HuronIcon },
+  { id: 'huron', title: 'Cabeçote Huron', sub: 'Flanges de 45°', machine: 'Máquina: Portal Feller', Icon: HuronIcon },
 ];
 
 export default function HomePage({ onNavigate }) {
@@ -51,11 +51,12 @@ export default function HomePage({ onNavigate }) {
     <div className="page">
       <div className={styles.hint}>Escolha um módulo</div>
       <div className={styles.grid}>
-        {MODULES.map(({ id, title, sub, Icon }) => (
+        {MODULES.map(({ id, title, sub, machine, Icon }) => (
           <button key={id} type="button" className={styles.card} onClick={() => onNavigate(id)}>
             <span className={styles.icon}><Icon /></span>
             <span className={styles.title}>{title}</span>
             <span className={styles.sub}>{sub}</span>
+            {machine && <span className={styles.sub}>{machine}</span>}
           </button>
         ))}
       </div>
