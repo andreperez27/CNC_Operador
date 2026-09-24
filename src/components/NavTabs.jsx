@@ -1,9 +1,11 @@
 import styles from './NavTabs.module.css';
 
 const TABS = [
+  { id: 'inicio', label: 'Início' },
   { id: 'roscas', label: 'Roscas' },
   { id: 'trigonometria', label: 'Trigon.' },
   { id: 'gcoderapido', label: 'G-Code Rapido' },
+  { id: 'huron', label: 'Cabeçote Huron' },
 ];
 
 export default function NavTabs({ active, onChange }) {
