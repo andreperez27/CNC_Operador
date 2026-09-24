@@ -14,29 +14,36 @@
   box-shadow: 0 2px 30px rgba(0,0,0,.7);
 }
 
-.logo {
+.title {
+  position: absolute;
+  left: 50%;
+  transform: translateX(-50%);
   font-family: var(--display);
   font-size: 1.25rem;
   letter-spacing: 3px;
   color: var(--accent);
   text-transform: uppercase;
+  white-space: nowrap;
+  max-width: 62vw;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
-.sub {
-  font-family: var(--mono);
-  font-size: .6rem;
-  color: var(--text2);
-  letter-spacing: 1.5px;
-  margin-top: 1px;
+.logoImg {
+  display: block;
+  height: 44px;
+  width: auto;
+  max-width: 52vw;
+  object-fit: contain;
+  border-radius: 8px;
 }
 
-.badge {
-  font-family: var(--mono);
-  font-size: .6rem;
-  background: var(--accent);
-  color: #000;
-  padding: 3px 9px;
-  border-radius: 2px;
-  font-weight: 700;
-  letter-spacing: 1px;
+@media (max-width: 480px) {
+  .logoImg {
+    height: 34px;
+  }
+  .title {
+    font-size: 1rem;
+    letter-spacing: 2px;
+  }
 }
