@@ -47,3 +47,7 @@
     letter-spacing: 2px;
   }
 }
+
+.logoutBtn {
+  flex: 0 0 auto;
+}
