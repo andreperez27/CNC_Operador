@@ -1,6 +1,8 @@
 import { useState, lazy, Suspense } from 'react';
 import Header from '../components/Header';
 import NavTabs from '../components/NavTabs';
+import { AuthProvider } from '../features/auth/AuthContext';
+import AuthGate from '../features/auth/AuthGate';
 import styles from './App.module.css';
 
 const RoscasPage = lazy(() => import('../features/roscas/RoscasPage'));
@@ -23,16 +25,20 @@ export default function App() {
   const PageComponent = PAGES[activeTab];
 
   return (
-    <div className={styles.app}>
-      <Header />
-      <NavTabs active={activeTab} onChange={setActiveTab} />
-      <main className={styles.main}>
-        {PageComponent && (
-          <Suspense fallback={<div className={styles.loading}>CARREGANDO...</div>}>
-            <PageComponent onNavigate={setActiveTab} />
-          </Suspense>
-        )}
-      </main>
-    </div>
+    <AuthProvider>
+      <div className={styles.app}>
+        <Header />
+        <AuthGate>
+          <NavTabs active={activeTab} onChange={setActiveTab} />
+          <main className={styles.main}>
+            {PageComponent && (
+              <Suspense fallback={<div className={styles.loading}>CARREGANDO...</div>}>
+                <PageComponent onNavigate={setActiveTab} />
+              </Suspense>
+            )}
+          </main>
+        </AuthGate>
+      </div>
+    </AuthProvider>
   );
 }
