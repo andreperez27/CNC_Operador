@@ -13,9 +13,20 @@ export default function ThreadSelector({
   onQueryChange,
   matches,
   selected,
+  suggested,
+  ruleName,
+  showForm,
+  onToggleForm,
   onSelect,
   onClear,
 }) {
+  // Blindado contra undefined/NaN (ex.: render transitório de HMR): só mostra
+  // a sugestão quando houver número finito de verdade.
+  const sugValue = Number(suggested);
+  const showSug = suggested != null && Number.isFinite(sugValue);
+  const sugText = showSug
+    ? Number(sugValue.toFixed(2)).toString().replace('.', ',')
+    : null;
   return (
     <div className={styles.selector}>
       <div className={styles.selectorGrid}>
@@ -43,7 +54,7 @@ export default function ThreadSelector({
             inputMode="text"
             value={query}
             onChange={(e) => onQueryChange(e.target.value)}
-            placeholder="Buscar rosca... ex.: M10, M10 x 1,5, M12x1.25"
+            placeholder="Buscar rosca... ex.: M10, M10 x 1,5, 1/4-20"
           />
         </label>
       </div>
@@ -59,8 +70,17 @@ export default function ThreadSelector({
             {selected.designation}
           </button>
           <span className={styles.selectedHint}>
-            {methodLabel(selected.method)} · passo {String(selected.pitch).replace('.', ',')} mm
+            {methodLabel(selected.method)} · passo {selected.pitch.toFixed(2).replace('.', ',')} mm
           </span>
+          {showSug && (
+            <span className={styles.selectedHint}>
+              · Prof. sugerida: {sugText} mm
+            </span>
+          )}
+          <span className={styles.ruleTag}>{ruleName}</span>
+          <button type="button" className={styles.linkBtn} onClick={onToggleForm}>
+            {showForm ? 'Ocultar parâmetros' : 'Preencher parâmetros'}
+          </button>
           <button type="button" className={styles.linkBtn} onClick={onClear}>
             Trocar rosca
           </button>

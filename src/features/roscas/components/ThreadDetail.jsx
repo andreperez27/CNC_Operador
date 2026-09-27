@@ -4,17 +4,21 @@ function num(v) {
   return Number(v).toFixed(2).replace('.', ',');
 }
 
-export default function ThreadDetail({ thread }) {
+export default function ThreadDetail({ thread, suggestedDepth }) {
+  // Só o que o operador precisa na hora: identificação + furo + passo.
+  // Família/Norma/Fonte/Vc ficam no banco/docs, fora da tela.
   const rows = [
     ['Ø nominal', num(thread.nominal) + ' mm'],
     ['Passo', num(thread.pitch) + ' mm'],
-    ['Ø furo', num(thread.hole) + ' mm'],
-    ['Família', thread.familyId === 'fine' ? 'Métrica Fina' : 'Métrica ISO'],
-    ['Estratégia', thread.method === 'rigid' ? 'Rosca rígida' : 'Interpolação helicoidal'],
-    ['Ciclo', thread.cycle === 207 ? 'CYCL DEF 207' : '— (helicoidal)'],
-    ['Norma', thread.standard],
-    ['Fonte', thread.source],
   ];
+  if (thread.tpi) {
+    rows.push(['TPI', String(thread.tpi)]);
+  }
+  rows.push(['Ø furo', num(thread.hole) + ' mm']);
+  const sug = Number(suggestedDepth);
+  if (Number.isFinite(sug)) {
+    rows.push(['Profundidade', num(sug) + ' mm']);
+  }
 
   return (
     <div className={styles.detail}>
@@ -29,16 +33,6 @@ export default function ThreadDetail({ thread }) {
           </div>
         ))}
       </div>
-      {thread.recommendations?.length > 0 && (
-        <div className={styles.vcRow}>
-          <span className={styles.vcLabel}>Vc recomendado:</span>
-          {thread.recommendations.map((r) => (
-            <span key={r.material} className={styles.vcChip}>
-              {r.material} {r.vc} m/min
-            </span>
-          ))}
-        </div>
-      )}
     </div>
   );
 }

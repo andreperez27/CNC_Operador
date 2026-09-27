@@ -13,6 +13,10 @@ export {
   getThread,
   getThreads,
   getAvailableFamilies,
+  pitchMmFromTpi,
+  inchToMm,
+  imperialFractionToInches,
+  isFineThread,
 } from './database';
 export {
   normalizeThreadQuery,

@@ -20,8 +20,9 @@ O banco de roscas armazena **características normalizadas da rosca**:
 | `source` | `rosca.xlsx` | origem dos dados validados |
 | `recommendations` | – | observações de fábrica |
 
-**Estrutura**: `src/core/machining/thread/database.js` — **45 registros**:
-32 métricas (M1–M64) + 13 métricas finas (ISO 724 / DIN 13).
+**Estrutura**: `src/core/machining/thread/database.js` — **56 registros**:
+32 métricas (M1–M64) + 13 métricas finas (ISO 724 / DIN 13) + 11 Whitworth
+BSW 1/8"–1" (BS 84:2007, passo = 25,4/TPI, furo da tabela).
 
 **Não pertence aqui**: critérios de *fabricação* (profundidade de furo cego, fator
 × diâmetro etc.). Isso é regra de processo → `core/process/rules` (separado).
@@ -46,6 +47,7 @@ cego ou passante muda *quanto fundo furar*, nunca o Ø do furo.
 |---|---|---|
 | `metric` | Métricas ISO 261, passo coarse padrão (M1–M64) | available |
 | `fine` | Métricas finas ISO 724 / DIN 13 | available |
+| `bsw` | Whitworth BSW BS 84 (fração + TPI; ex. `1/4"-20`) | available |
 | `unc` | UNC (ASME B1.1) — sem dados confiáveis locais | pending |
 | `unf` | UNF (ASME B1.1) — sem dados confiáveis locais | pending |
 | `bsp` | BSP (ISO 228-1) — sem dados confiáveis locais | pending |
@@ -56,17 +58,42 @@ cego ou passante muda *quanto fundo furar*, nunca o Ø do furo.
   `method = rigid`.
 - **Regra da fábrica**: `nominal > 24` → `method = helical` (interpolação
   helicoidal, CC/CP com fresa de roscar); `nominal ≤ 24` → `rigid`. Vale para
-  métrica e métrica fina. A planilha indicava CYCL 207 também para M30 — a regra
+  métrica, métrica fina e BSW (só W1" cai em helicoidal). A planilha indicava CYCL 207 também para M30 — a regra
   M24+ tem precedência (ver §6, decisão 5).
+
+### Q239 — passo com sinal (oficial HEIDENHAIN iTNC 530, Cycle 207 RIGID TAPPING)
+
+- `Q239 = pitch em mm`; **`Q239 > 0 → rosca direita`, `Q239 < 0 → rosca esquerda`**.
+- O gerador emite `hand = right → Q239 = +passo` e `hand = left → Q239 = −passo`
+  (verificado contra o manual oficial — pendência anterior RESOLVIDA).
+- Exemplos: `1/4-20 BSW` (20 TPI, passo 1,270 mm) → direita `Q239=+1,270`,
+  esquerda `Q239=−1,270`; `M10x1.5` → direita `Q239=+1,500`,
+  esquerda `Q239=−1,500`.
 
 ## 5. Como consultar
 
 ```js
 import { getThread, searchThreads, getAvailableFamilies } from '../core/machining/thread';
 getThread('metric:M10X1.5');
+getThread('bsw:1/4-20');
 searchThreads('M10');            // → todas as opções de passo
+searchThreads('1/4-20', 'bsw');  // → BSW 1/4"-20
 getAvailableFamilies();          // → famílias com dados
 ```
+
+## 6. Conversão imperial e sentido (ROSCAS 2.0)
+
+- `pitchMmFromTpi(tpi) = 25,4 / tpi` (ex.: 20 TPI → 1,27 mm) e
+  `inchToMm` — precisão total; arredondar só na exibição. O registro BSW
+  guarda `tpi` + `diameterIn` originais; o campo canônico `pitch` (mm)
+  alimenta o gerador — que trabalha SEMPRE com `pitch_mm`, nunca com TPI.
+- `isFineThread(thread)` = `familyId === 'fine'` (único ponto de decisão).
+- **Q239 com sinal (Cycle 207):** `hand` (`right` default | `left`) entra em
+  `solveThread` e o template emite Q239 = +passo/−passo. Sem manual iTNC em
+  disco para confronto da convenção de sinal — pendência registrada; a
+  helicoidal usa `direction` (cw/ccw → DR−/DR+) como antes.
+- Brocas BSW: primária gewinde-normen.de (BS 84); alternates m-techmetal
+  (1/8: 2,55 · 1/4: 5,10 · 1/2: 10,50 · 3/4: 16,25 · 1: 22,00) no `source`.
 
 ## 6. Auditoria v1 — inventário real e decisões
 

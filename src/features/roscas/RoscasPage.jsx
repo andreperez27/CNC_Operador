@@ -1,5 +1,6 @@
 import { useState, useMemo, useEffect } from 'react';
 import { THREAD_FAMILIES, getThread, searchThreads, solveThread, buildThreadProgram, resolveHoleFromInput, DEFAULT_HOLE_RULE, DEFAULT_HOLE_MARGIN } from '../../core/machining/thread';
+import { listBlindHoleRules, CUSTOM_RULE_ID } from '../../core/process/rules/blindHoleDepth';
 import ProgramDisplay from '../heidenhain/components/ProgramDisplay';
 import ValidationPanel from '../gcoderapido/components/ValidationPanel';
 import ThreadSelector from './components/ThreadSelector';
@@ -17,12 +18,15 @@ const BASE_VALUES = {
   toolDiameter: 6,
   feed: 120,
   direction: 'cw',
+  hand: 'right',
   holeRule: DEFAULT_HOLE_RULE,
   customFactor: 3,
   customReference: 'threadDiameter',
   holeMargin: DEFAULT_HOLE_MARGIN,
   holeDepth: '',
 };
+
+const RULES = listBlindHoleRules();
 
 function helicalToolDefault(thread) {
   return Math.min(thread.hole * 0.8, thread.nominal * 0.5);
@@ -32,6 +36,7 @@ export default function RoscasPage() {
   const [familyId, setFamilyId] = useState('metric');
   const [query, setQuery] = useState('');
   const [selectedId, setSelectedId] = useState(null);
+  const [showForm, setShowForm] = useState(false);
   const [values, setValues] = useState(BASE_VALUES);
   const [holeTouched, setHoleTouched] = useState(false);
 
@@ -74,6 +79,7 @@ export default function RoscasPage() {
     setFamilyId(id);
     setQuery('');
     setSelectedId(null);
+    setShowForm(false);
   };
 
   const handleQuery = (v) => {
@@ -85,6 +91,7 @@ export default function RoscasPage() {
     setSelectedId(thread.id);
     setQuery('');
     setHoleTouched(false);
+    setShowForm(false);
     setValues((prev) => ({ ...prev, toolDiameter: helicalToolDefault(thread) }));
   };
 
@@ -92,6 +99,7 @@ export default function RoscasPage() {
     setSelectedId(null);
     setQuery('');
     setHoleTouched(false);
+    setShowForm(false);
   };
 
   const handleChange = (id, raw) => {
@@ -115,6 +123,7 @@ export default function RoscasPage() {
       depth: values.depth,
       safety: values.safety,
       zStart: values.zStart,
+      hand: values.hand,
       holeRule: values.holeRule,
       customFactor: values.customFactor,
       customReference: values.customReference,
@@ -135,6 +144,10 @@ export default function RoscasPage() {
   const result = useMemo(() => (input ? solveThread(input) : null), [input]);
   const model = result?.valid ? result.model : null;
   const program = useMemo(() => (model ? buildThreadProgram(model) : null), [model]);
+
+  const ruleName = values.holeRule === CUSTOM_RULE_ID
+    ? 'Personalizada'
+    : (RULES.find((r) => r.id === values.holeRule)?.name || '—');
 
   return (
     <div className={styles.page}>
@@ -158,14 +171,18 @@ export default function RoscasPage() {
           onQueryChange={handleQuery}
           matches={matches}
           selected={selected}
+          suggested={hole?.suggested ?? null}
+          ruleName={ruleName}
+          showForm={showForm}
+          onToggleForm={() => setShowForm((v) => !v)}
           onSelect={handleSelect}
           onClear={handleClear}
         />
       </div>
 
-      {selected && <ThreadDetail thread={selected} />}
+      {selected && <ThreadDetail thread={selected} suggestedDepth={hole?.suggested ?? null} />}
 
-      {selected && (
+      {selected && showForm && (
         <div className={styles.workRow}>
           <div className={styles.workFormCol}>
             <ThreadForm
@@ -185,7 +202,7 @@ export default function RoscasPage() {
         </div>
       )}
 
-      {model && (
+      {selected && showForm && model && (
         <div className={styles.section}>
           <div className={styles.sectionHeader}>
             <div className={styles.sectionTitle}>Programa Heidenhain (.H)</div>

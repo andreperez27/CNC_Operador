@@ -9,6 +9,7 @@
  *   INVALID_SPINDLE_SPEED  RPM ausente/<= 0/não numérico (NaN/Inf)
  *   INVALID_DEPTH          profundidade ausente/<= 0/não numérica
  *   INVALID_TOOL_NUMBER    número da ferramenta não inteiro >= 0
+ *   INVALID_HAND           sentido fora de right/left (CYCL 207: Q239 ±passo)
  *   INVALID_Z_START        posição inicial Z não numérica
  *   INVALID_SAFETY         distância de segurança negativa
  *   INVALID_TOOL_DIAMETER  (helicoidal) diâmetro da fresa ausente/<= 0
@@ -70,6 +71,14 @@ export function validateThreadInput(input, ctx) {
   if (!isFiniteNumber(toolNumber) || toolNumber < 0 || !Number.isInteger(toolNumber)) {
     addError(v, 'INVALID_TOOL_NUMBER', 'ferramenta',
       'Numero da ferramenta deve ser um inteiro maior ou igual a zero.');
+  }
+
+  // Sentido da rosca (CYCL DEF 207: Q239 = +passo direita / −passo esquerda).
+  // Default direita; helicoidal usa `direction` (cw/ccw) e ignora este campo.
+  const hand = input.hand === undefined || input.hand === null ? 'right' : input.hand;
+  if (hand !== 'right' && hand !== 'left') {
+    addError(v, 'INVALID_HAND', 'sentidoRosca',
+      'Sentido da rosca invalido (use right ou left).');
   }
 
   if (input.zStart !== undefined && input.zStart !== null) {

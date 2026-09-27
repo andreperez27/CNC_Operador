@@ -14,6 +14,7 @@
  *     threadId,                  // id do registro (ou `thread` direto)
  *     toolNumber, rpm, depth,    // depth = profundidade ÚTIL da rosca
  *     safety, zStart,            // zStart = topo da rosca (0 por padrão)
+ *     hand,                      // 'right' (default) | 'left' — rígida: sinal de Q239
  *     toolDiameter, feed, direction,  // apenas método helical
  *     holeRule,                  // regra de furo cego (processo) — veja core/process
  *     customFactor, customReference,  // se holeRule = 'process:custom'
@@ -105,6 +106,7 @@ export function solveThread(input) {
     toolNumber: input.toolNumber === undefined ? 1 : input.toolNumber,
     rpm: input.rpm,
     depth: input.depth,
+    hand: input.hand === 'left' ? 'left' : 'right',
     toolDiameter: input.toolDiameter,
     feed: input.feed,
     direction: input.direction || 'cw',

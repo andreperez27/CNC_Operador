@@ -156,6 +156,17 @@
   text-decoration: underline;
 }
 
+.ruleTag {
+  padding: 4px 10px;
+  background: #12261c;
+  color: #7ecba0;
+  border: 1px solid #1f5c3a;
+  border-radius: 4px;
+  font-family: 'Share Tech Mono', monospace;
+  font-size: 12px;
+  white-space: nowrap;
+}
+
 .matches {
   display: flex;
   flex-direction: column;

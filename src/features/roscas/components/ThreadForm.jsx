@@ -161,13 +161,7 @@ export default function ThreadForm({ thread, values, errors, validOverall, onCha
           <span className={styles.infoLabel}>Profundidade sugerida</span>
           <span className={styles.suggestedValue}>{fmt(suggested)}</span>
         </div>
-        <div className={styles.suggestNote}>
-          {ruleLabel} — sugestão pela regra de processo (origem: informada pelo usuário; não é
-          norma ISO/ABNT). Referência usada: {isCustom
-            ? (BLIND_HOLE_REFERENCE_LABELS[values.customReference] || '—')
-            : (BLIND_HOLE_REFERENCE_LABELS[(RULES.find((r) => r.id === values.holeRule) || {}).reference] || '—')}.
-        </div>
-        <div className={styles.ruleHint}>Profundidade sugerida pela regra de processo.</div>
+        <div className={styles.suggestNote}>{ruleLabel}</div>
       </div>
 
       <Field
@@ -201,13 +195,26 @@ export default function ThreadForm({ thread, values, errors, validOverall, onCha
           usar sugestão
         </button>
       </div>
-      <div className={styles.holeHint}>
-        Profundidade total do furo ≥ profundidade da rosca (furo cego). A regra nunca altera a
-        profundidade útil da rosca.
-      </div>
 
       {/* ── USINAGEM ── */}
       <div className={styles.sectionLabel}>Parâmetros de usinagem</div>
+      {!isHelical && (
+        <label className={`${styles.field} ${err('sentidoRosca') ? styles.fieldError : ''}`}>
+          <span className={styles.label}>
+            Sentido da rosca
+            {err('sentidoRosca') ? <span className={styles.badgeX}>❌</span> : <span className={styles.badgeOk}>✓</span>}
+          </span>
+          <select
+            className={styles.input}
+            value={values.hand}
+            onChange={(e) => onChange('hand', e.target.value)}
+          >
+            <option value="right">Direita (Q239 +passo)</option>
+            <option value="left">Esquerda (Q239 −passo)</option>
+          </select>
+          {err('sentidoRosca') && <span className={styles.msg}>{err('sentidoRosca').message}</span>}
+        </label>
+      )}
       <div className={styles.grid}>
         {MACHINING_FIELDS.map((def) => (
           <Field
@@ -269,22 +276,16 @@ export default function ThreadForm({ thread, values, errors, validOverall, onCha
         </>
       )}
 
-      <div className={styles.infoBox}>
-        <div className={styles.infoRow}>
-          <span className={styles.infoLabel}>Estratégia</span>
-          <span className={styles.infoValue}>
-            {isHelical ? 'Interpolação helicoidal' : 'Rosca rígida (CYCL DEF 207)'}
-          </span>
-        </div>
-        {!isHelical && (
+      {!isHelical && (
+        <div className={styles.infoBox}>
           <div className={styles.infoRow}>
             <span className={styles.infoLabel}>Avanço (auto)</span>
             <span className={styles.infoValue}>
-              {Number(values.rpm || 0) * thread.pitch} mm/min
+              {Math.round(Number(values.rpm || 0) * thread.pitch)} mm/min
             </span>
           </div>
-        )}
-      </div>
+        </div>
+      )}
     </form>
   );
 }

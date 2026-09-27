@@ -4,6 +4,10 @@ import {
   THREAD_FAMILIES,
   getThread,
   getAvailableFamilies,
+  pitchMmFromTpi,
+  inchToMm,
+  imperialFractionToInches,
+  isFineThread,
 } from '../src/core/machining/thread/database';
 import {
   normalizeThreadQuery,
@@ -374,5 +378,151 @@ describe('postprocessor — programa final', () => {
     const r = solveThread({ ...HELICAL_INPUT, direction: 'ccw' });
     const program = buildThreadProgram(r.model, { programName: 'HELIX_CCW' });
     expect(program).toContain('CP IPA+360  IZ-6,000 DR+ F120');
+  });
+});
+
+describe('ROSCAS 2.0 — conversão TPI→mm (função única, precisão total)', () => {
+  it('pitchMmFromTpi: valores de referência (§3)', () => {
+    const cases = [
+      [40, 0.635], [24, 1.058333333333], [20, 1.27], [18, 1.411111111111],
+      [16, 1.5875], [14, 1.814285714286], [12, 2.116666666667],
+      [11, 2.309090909091], [10, 2.54], [9, 2.822222222222], [8, 3.175],
+    ];
+    for (const [tpi, expected] of cases) {
+      expect(pitchMmFromTpi(tpi)).toBeCloseTo(expected, 9);
+    }
+  });
+
+  it('inchToMm + imperialFractionToInches', () => {
+    expect(inchToMm(0.25)).toBeCloseTo(6.35, 12);
+    expect(imperialFractionToInches('1/4')).toBe(0.25);
+    expect(imperialFractionToInches('3/16')).toBeCloseTo(0.1875, 12);
+    expect(imperialFractionToInches('1')).toBe(1);
+    expect(imperialFractionToInches('')).toBeNull();
+    expect(imperialFractionToInches('1/0')).toBeNull();
+    expect(imperialFractionToInches('abc')).toBeNull();
+  });
+
+  it('isFineThread: só familyId fine', () => {
+    expect(isFineThread(getThread('fine:M10X1.25'))).toBe(true);
+    expect(isFineThread(getThread('metric:M10X1.5'))).toBe(false);
+    expect(isFineThread(getThread('bsw:1/4-20'))).toBe(false);
+    expect(isFineThread(null)).toBe(false);
+  });
+});
+
+describe('ROSCAS 2.0 — família BSW (BS 84:2007)', () => {
+  const bsw = THREAD_RECORDS.filter((r) => r.familyId === 'bsw');
+
+  it('11 registros (1/8 a 1"), tpi/diameterIn preservados', () => {
+    expect(bsw).toHaveLength(11);
+    for (const r of bsw) {
+      expect(typeof r.tpi).toBe('number');
+      expect(typeof r.diameterIn).toBe('number');
+      expect(r.standard).toBe('BS 84:2007');
+      expect(r.source).toContain('gewinde-normen.de');
+    }
+  });
+
+  it('1/4-20 → 6,35 mm, 20 TPI, passo 1,27, furo 4,72, rígida', () => {
+    const t = getThread('bsw:1/4-20');
+    expect(t.nominal).toBeCloseTo(6.35, 9);
+    expect(t.tpi).toBe(20);
+    expect(t.pitch).toBeCloseTo(1.27, 9);
+    expect(t.hole).toBe(4.72);
+    expect(t.method).toBe('rigid');
+    expect(t.cycle).toBe(207);
+    expect(t.designation).toBe('1/4" - 20 BSW');
+  });
+
+  it('3/8-16 e 1/2-12 (casos §14)', () => {
+    const a = getThread('bsw:3/8-16');
+    expect(a.nominal).toBeCloseTo(9.525, 9);
+    expect(a.pitch).toBeCloseTo(1.5875, 9);
+    const b = getThread('bsw:1/2-12');
+    expect(b.nominal).toBeCloseTo(12.7, 9);
+    expect(b.pitch).toBeCloseTo(2.116666666667, 9);
+  });
+
+  it('W1" cai em helical pela regra >24 (25,4 mm)', () => {
+    const t = getThread('bsw:1-8');
+    expect(t.nominal).toBeCloseTo(25.4, 9);
+    expect(t.method).toBe('helical');
+    expect(t.cycle).toBeNull();
+  });
+
+  it('família bsw disponível; unc/unf/bsp seguem pendentes sem registros', () => {
+    expect(getAvailableFamilies().some((f) => f.id === 'bsw')).toBe(true);
+    expect(THREAD_RECORDS.some((r) => r.familyId === 'unc')).toBe(false);
+  });
+});
+
+describe('ROSCAS 2.0 — busca imperial', () => {
+  it('todos os formatos BSW (§9)', () => {
+    for (const q of ['1/4-20', '1/4 - 20', '1/4" - 20', '1/4 20', '1/4 BSW', 'W1/4-20']) {
+      const hits = searchThreads(q, 'bsw');
+      expect(hits.map((h) => h.id)).toContain('bsw:1/4-20');
+    }
+  });
+
+  it('fração sem TPI lista o diâmetro; TPI filtra o passo', () => {
+    expect(searchThreads('1/4', 'bsw').map((h) => h.id)).toContain('bsw:1/4-20');
+    expect(searchThreads('1/2-12', 'bsw')[0].id).toBe('bsw:1/2-12');
+  });
+
+  it('busca métrica inalterada', () => {
+    expect(searchThreads('M10x1.5')[0].id).toBe('metric:M10X1.5');
+    expect(searchThreads('M10', 'fine')).toHaveLength(2);
+  });
+});
+
+describe('ROSCAS 2.0 — Q239 com sentido (Cycle 207)', () => {
+  const BSW_RIGID = {
+    threadId: 'bsw:1/4-20',
+    toolNumber: 1,
+    rpm: 500,
+    depth: 10,
+    safety: 5,
+    zStart: 0,
+  };
+
+  function q239Of(model) {
+    const ir = buildThreadIR(model);
+    const cyc = ir.find((b) => b.type === 'cycleDef');
+    return cyc.params.find((p) => p.q === 239).value;
+  }
+
+  it('IR carrega Q239 = +passo na direita (default)', () => {
+    const r = solveThread(BSW_RIGID);
+    expect(r.valid).toBe(true);
+    expect(q239Of(r.model)).toBeCloseTo(1.27, 9);
+  });
+
+  it('esquerda inverte o sinal no IR', () => {
+    const r = solveThread({ ...BSW_RIGID, hand: 'left' });
+    expect(r.valid).toBe(true);
+    expect(q239Of(r.model)).toBeCloseTo(-1.27, 9);
+  });
+
+  it('texto .H: Q239 com sinal e vírgula decimal', () => {
+    const right = buildThreadProgram(solveThread(BSW_RIGID).model, { programName: 'BSW_R' });
+    expect(right).toContain('Q239=+1,270');
+    const left = buildThreadProgram(solveThread({ ...BSW_RIGID, hand: 'left' }).model, { programName: 'BSW_L' });
+    expect(left).toContain('Q239=-1,270');
+  });
+
+  it('M10x1.5: +1,500 direita / −1,500 esquerda', () => {
+    const right = buildThreadProgram(solveThread(RIGID_INPUT).model, { programName: 'M_R' });
+    expect(right).toContain('Q239=+1,500');
+    const left = buildThreadProgram(solveThread({ ...RIGID_INPUT, hand: 'left' }).model, { programName: 'M_L' });
+    expect(left).toContain('Q239=-1,500');
+  });
+
+  it('sentido inválido → INVALID_HAND (estruturado)', () => {
+    const r = solveThread({ ...RIGID_INPUT, hand: 'x' });
+    expect(r.valid).toBe(false);
+    expect(r.model).toBeNull();
+    expect(r.validation.errors[0].code).toBe('INVALID_HAND');
+    expect(r.validation.errors[0].field).toBe('sentidoRosca');
   });
 });

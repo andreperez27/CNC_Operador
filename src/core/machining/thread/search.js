@@ -6,10 +6,11 @@
  *   M10        -> todos os passos do Ø 10
  *   M10x1.5    / M10 x 1,5  / M10 1.5  / 10x1.5  / M10 1,50
  *   M12x1.25   / M12 x 1,25
- *   rosca inexistente -> []
+ *   1/4-20     / 1/4 - 20   / 1/4" - 20 / 1/4 20 / 1/4 BSW
+ *              -> BSW (fração + TPI opcional; TPI vira passo em mm)
  */
 
-import { getThreads } from './database';
+import { getThreads, imperialFractionToInches, inchToMm, pitchMmFromTpi } from './database';
 
 function toNum(v) {
   return Number(String(v).replace(',', '.'));
@@ -35,6 +36,8 @@ export function normalizeThreadQuery(raw) {
  * Interpreta a consulta em { nominal, pitch?, valid }.
  */
 export function parseThreadQuery(raw) {
+  const imperial = parseImperialQuery(raw);
+  if (imperial) return imperial;
   const n = normalizeThreadQuery(raw);
   if (!n) return { raw: '', nominal: null, pitch: null, valid: false };
   const m = n.match(/^M(\d+(?:\.\d+)?)(?:X(\d+(?:\.\d+)?))?$/);
@@ -43,6 +46,30 @@ export function parseThreadQuery(raw) {
     raw: n,
     nominal: toNum(m[1]),
     pitch: m[2] !== undefined ? toNum(m[2]) : null,
+    valid: true,
+  };
+}
+
+/**
+ * Ramo imperial (BSW): fração de polegada + TPI opcional.
+ * "1/4-20" | "1/4 - 20" | '1/4" - 20' | "1/4 20" | "1/4 BSW" | "1/4".
+ * O TPI vira passo em mm pela MESMA função dos registros — comparação exata.
+ */
+function parseImperialQuery(raw) {
+  if (raw === undefined || raw === null) return null;
+  let q = String(raw).trim().toUpperCase().replace(/"/g, ' ');
+  if (!q.includes('/')) return null;
+  q = q.replace(/\bBSW\b/g, ' ').replace(/\bW(?=\d)/g, ' ').trim().replace(/\s+/g, ' ');
+  const m = q.match(/^(\d+\/\d+)(?:\s*[-\s]\s*(\d+(?:\.\d+)?))?$/);
+  if (!m) return null;
+  const inches = imperialFractionToInches(m[1]);
+  if (inches === null) return null;
+  const tpi = m[2] !== undefined ? Number(m[2]) : null;
+  if (tpi !== null && !(tpi > 0)) return null;
+  return {
+    raw: 'W' + m[1] + (tpi !== null ? '-' + m[2] : ''),
+    nominal: inchToMm(inches),
+    pitch: tpi !== null ? pitchMmFromTpi(tpi) : null,
     valid: true,
   };
 }

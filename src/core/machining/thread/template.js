@@ -36,6 +36,12 @@ export function buildThreadIR(model) {
   const block = (type, data) => createBlock(type, data);
   const blocks = [];
 
+  // CYCL DEF 207: Q239 carrega o sinal do sentido — direita +passo,
+  // esquerda −passo (requisito ROSCAS 2.0 §4; sem manual iTNC em disco para
+  // confronto — pendência registrada). Helicoidal usa DR via `direction`.
+  const handSign = p.hand === 'left' ? -1 : 1;
+  const q239 = handSign * t.pitch;
+
   const header = model.method === 'rigid'
     ? 'ROSCA ' + model.designation + ' - CYCL DEF 207 (ROSCA RIGIDA)'
     : 'ROSCA ' + model.designation + ' - INTERPOLACAO HELICOIDAL';
@@ -77,7 +83,7 @@ export function buildThreadIR(model) {
           { q: 200, value: p.safety, decimals: 1, label: 'DIST. SEGURANCA' },
           { q: 203, value: p.zStart, decimals: 3, label: 'SUPERFICIE PECA' },
           { q: 335, value: t.hole, decimals: 3, label: 'DIAMETRO NOMINAL' },
-          { q: 239, value: t.pitch, decimals: 3, label: 'PASSO' },
+          { q: 239, value: q239, decimals: 3, label: 'PASSO' },
           { q: 201, value: -p.depth, decimals: 3, label: 'PROFUNDIDADE ROSCA' },
           { q: 253, value: 750, decimals: 0, label: 'VEL.POSICIONAMENTO' },
           { q: 358, value: 0, decimals: 0, label: 'SENTIDO ROTACAO AO ENTRAR' },

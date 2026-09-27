@@ -34,7 +34,18 @@
  * Familias:
  *   metric (Metrica ISO)      — dados disponiveis  (ISO 261 + rosca.xlsx)
  *   fine   (Metrica Fina)     — dados disponiveis  (ISO 724 / DIN 13)
+ *   bsw    (Whitworth BSW)    — dados disponiveis  (BS 84:2007, via tabela
+ *            mm gewinde-normen.de; passo derivado de TPI, furo da tabela)
  *   unc, unf, bsp             — SEM dados confiaveis locais -> pendentes.
+ *
+ * CONVERSAO IMPERIAL (BSW): pitch_mm = 25.4 / tpi e nominal_mm = inch * 25.4,
+ * calculados com precisao total (`pitchMmFromTpi`/`inchToMm`); arredondamento
+ * SOMENTE na exibicao. O registro guarda `tpi` e `diameterIn` originais.
+ *
+ * DIVERGENCIA DE BROCAS BSW ENTRE FONTES (reportada, nao escolhida em
+ * silencio — primaria: gewinde-normen.de):
+ *   1/8: 2,36 (alt. 2,55) · 1/4: 4,72 (alt. 5,10) · 1/2: 9,99 (alt. 10,50)
+ *   3/4: 15,80 (alt. 16,25) · 1: 21,34 (alt. 22,00) — alternates m-techmetal.
  */
 
 function pt(v) {
@@ -49,8 +60,7 @@ function designation(nominal, pitch) {
   return 'M' + pt(nominal) + ' × ' + pt(pitch);
 }
 
-export const THREAD_FAMILIES = [
-  {
+export const THREAD_FAMILIES = [  {
     id: 'metric',
     name: 'Métrica ISO',
     standard: 'ISO 261 / ISO 724',
@@ -67,6 +77,13 @@ export const THREAD_FAMILIES = [
   { id: 'unc', name: 'UNC', standard: 'ASME B1.1', status: 'pending', source: null },
   { id: 'unf', name: 'UNF', standard: 'ASME B1.1', status: 'pending', source: null },
   { id: 'bsp', name: 'BSP', standard: 'ISO 228-1', status: 'pending', source: null },
+  {
+    id: 'bsw',
+    name: 'Whitworth BSW',
+    standard: 'BS 84:2007',
+    status: 'available',
+    source: 'gewinde-normen.de (série BSW, BS 84) + conversão TPI→mm',
+  },
 ];
 
 const FAMILY_BY_ID = {};
@@ -76,6 +93,45 @@ THREAD_FAMILIES.forEach((f) => {
 
 export function getFamily(id) {
   return FAMILY_BY_ID[id] || THREAD_FAMILIES[0];
+}
+
+/**
+ * Conversão polegada → mm (BSW e futuras famílias imperiais).
+ * Precisão total — arredondar SOMENTE na exibição.
+ */
+export function inchToMm(inches) {
+  return inches * 25.4;
+}
+
+/**
+ * passo_mm = 25.4 / tpi — função única e testável (§3 ROSCAS 2.0).
+ * Precisão total para o gerador CNC; arredondar SOMENTE na exibição.
+ */
+export function pitchMmFromTpi(tpi) {
+  return 25.4 / tpi;
+}
+
+/** Fração imperial ("1/4", "3/16", "1") → polegadas decimais. */
+export function imperialFractionToInches(text) {
+  if (text === undefined || text === null) return null;
+  const s = String(text).trim();
+  if (s === '') return null;
+  const parts = s.split('/');
+  if (parts.length === 1) {
+    const n = Number(s);
+    return Number.isFinite(n) ? n : null;
+  }
+  if (parts.length === 2) {
+    const a = Number(parts[0]);
+    const b = Number(parts[1]);
+    if (Number.isFinite(a) && Number.isFinite(b) && b !== 0) return a / b;
+  }
+  return null;
+}
+
+/** Verdadeiro somente para rosca métrica fina (família `fine`) — §11. */
+export function isFineThread(thread) {
+  return thread?.familyId === 'fine';
 }
 
 const METRIC_VC = {
@@ -211,7 +267,60 @@ function buildFineRecords() {
   }));
 }
 
-export const THREAD_RECORDS = buildMetricRecords().concat(buildFineRecords());
+// [fração polegada, TPI, broca_mm] — WHITWORTH BSW (BS 84:2007).
+// Broca = fonte primária gewinde-normen.de (mm); alternates m-techmetal
+// documentados no `source` de cada registro (ver divergências no cabeçalho).
+const BSW_ROWS = [
+  ['1/8', 40, 2.36],
+  ['3/16', 24, 3.41],
+  ['1/4', 20, 4.72],
+  ['5/16', 18, 6.13],
+  ['3/8', 16, 7.49],
+  ['7/16', 14, 8.79],
+  ['1/2', 12, 9.99],
+  ['5/8', 11, 12.92],
+  ['3/4', 10, 15.80],
+  ['7/8', 9, 18.61],
+  ['1', 8, 21.34],
+];
+
+const BSW_DRILL_ALTERNATES = {
+  '1/8': '2,55',
+  '1/4': '5,10',
+  '1/2': '10,50',
+  '3/4': '16,25',
+  '1': '22,00',
+};
+
+function buildBswRecords() {
+  return BSW_ROWS.map(([frac, tpi, drill]) => {
+    const inches = imperialFractionToInches(frac);
+    const nominal = inchToMm(inches);
+    const pitch = pitchMmFromTpi(tpi);
+    const isHelical = nominal > 24; // mesma regra da fábrica (só W1" cai aqui)
+    const alt = BSW_DRILL_ALTERNATES[frac];
+    return {
+      id: 'bsw:' + frac + '-' + tpi,
+      familyId: 'bsw',
+      nome: frac + '"',
+      designation: frac + '" - ' + tpi + ' BSW',
+      normalized: 'W' + frac + '-' + tpi,
+      nominal,
+      pitch,
+      hole: drill,
+      tpi,
+      diameterIn: inches,
+      method: isHelical ? 'helical' : 'rigid',
+      cycle: isHelical ? null : 207,
+      standard: 'BS 84:2007',
+      source: 'gewinde-normen.de (BSW, BS 84)'
+        + (alt ? ' — broca altern. m-techmetal ' + alt + ' mm' : ''),
+      recommendations: [],
+    };
+  });
+}
+
+export const THREAD_RECORDS = buildMetricRecords().concat(buildFineRecords(), buildBswRecords());
 
 const RECORD_BY_ID = {};
 THREAD_RECORDS.forEach((r) => {
