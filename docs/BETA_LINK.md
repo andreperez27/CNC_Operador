@@ -1,5 +1,8 @@
 # Convite Beta por link (sem e-mail)
 
+> **Status: CONCLUÍDO e validado ponta a ponta** (gerar → link → anônimo →
+> resgatar → `app_users` → AuthGate → app, com deploy verde).
+
 Fluxo: admin gera link → testador abre → sessão anônima → resgate →
 `app_users` → AuthGate/offline normais. Login e-mail/senha intacto.
 
