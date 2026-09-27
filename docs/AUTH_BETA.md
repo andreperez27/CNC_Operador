@@ -45,3 +45,9 @@ bloqueio genérica. Tolerância offline de 7 dias via concessão local
 
 Admin e betas no Dashboard · secrets no GitHub · tela de administração
 futura · licenças/empresas futuras.
+
+## Convites sem e-mail
+
+Ver `docs/BETA_LINK.md` (tabela `beta_convites` + Edge Functions
+`convidar`/`resgatar` + aceite no login). O login e-mail/senha e o gate
+permanecem inalterados.

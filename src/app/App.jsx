@@ -10,6 +10,7 @@ const TrigonometriaPage = lazy(() => import('../features/trigonometria/Trigonome
 const GCodeRapidoPage = lazy(() => import('../features/gcoderapido/GCodeRapidoPage'));
 const HuronPage = lazy(() => import('../features/huron/HuronPage'));
 const HomePage = lazy(() => import('../features/home/HomePage'));
+const AdminConvitesPage = lazy(() => import('../features/admin/AdminConvitesPage'));
 
 const PAGES = {
   inicio: HomePage,
@@ -17,6 +18,7 @@ const PAGES = {
   trigonometria: TrigonometriaPage,
   gcoderapido: GCodeRapidoPage,
   huron: HuronPage,
+  convites: AdminConvitesPage,
 };
 
 export default function App() {

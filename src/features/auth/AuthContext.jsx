@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { AuthContext } from './auth-context';
 import { supabase, isSupabaseConfigured } from './supabaseClient';
 import { readOfflineGrant, writeOfflineGrant, clearOfflineGrant, isGrantFresh } from './offlinePolicy';
+import { getInviteTokenFromUrl } from './convites';
 
 function todayLocal() {
   const d = new Date();
@@ -57,6 +58,17 @@ export function AuthProvider({ children }) {
         .eq('id', session.user.id)
         .maybeSingle();
       if (error || !row) {
+        // Convite pendente + sessão sem linha (ex.: anônima recém-criada cujo
+        // resgate ainda não terminou): NÃO destrói a sessão — o aceite precisa
+        // dela viva para chamar `resgatar`. Apenas volta a signed-out para o
+        // LoginPage processar o token. Sem token, segue o padrão abaixo.
+        if (!error && !row && getInviteTokenFromUrl()) {
+          setProfile(null);
+          setReason(null);
+          setStatus('signed-out');
+          setOffline(false);
+          return;
+        }
         // Estado F: online e sem linha → bloqueia e limpa tolerância.
         await supabase.auth.signOut();
         clearOfflineGrant();
