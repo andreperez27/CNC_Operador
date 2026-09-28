@@ -16,14 +16,28 @@
  * Destino sugerido: src/core/machining/huronHead.js
  */
 
+import { ValidationError } from '../validation/validationEngine';
+import { validateHuronReachability } from './huronReachability';
+
 const toRad = (deg) => (deg * Math.PI) / 180;
 const toDeg = (rad) => (rad * 180) / Math.PI;
 
 /**
  * @param {{A?: number, B?: number, C?: number}} spatialAngles ângulos do 3D ROT, em graus
  * @returns {{bFlange: number, cFlange: number}} ângulos mecânicos das flanges, em graus
+ * @throws {ValidationError} INVALID_INPUT (não numérico) ou TILT_EXCEEDS_90
+ *         (orientação além de 90° de tilt) — contrato explícito: fora do
+ *         domínio alcançável a função NUNCA devolve ângulos.
  */
 export function calculateHuronFlanges({ A = 0, B = 0, C = 0 }) {
+  // Gate de alcançabilidade (regra única em huronReachability.js, sem
+  // duplicação): fora do domínio, falha explícita em vez de dobrar o
+  // resultado sobre o valor de fronteira.
+  const reach = validateHuronReachability({ A, B, C });
+  if (!reach.reachable) {
+    throw new ValidationError(reach.reason, 'orientacao', reach.message);
+  }
+
   const a = toRad(A);
   const b = toRad(B);
   const c = toRad(C);

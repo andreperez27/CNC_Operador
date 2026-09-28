@@ -5,10 +5,10 @@ import CopyButton from '../../components/CopyButton';
 import HuronForm from './HuronForm';
 import HuronPreview from './HuronPreview';
 import { calculateHuronFlanges, applyRingCalibration } from '../../core/machining/huronHead';
+import { validateHuronInput } from '../../core/machining/huronValidation';
 import { getCalibracaoAnel, setCalibracaoAnel } from './ringCalibrationStore';
 import styles from './HuronPage.module.css';
 
-const FIELD_IDS = ['A', 'B', 'C'];
 const MACHINE_ID = 'feller-huron45';
 
 function parseAngle(raw) {
@@ -38,14 +38,18 @@ export default function HuronPage() {
     setCalibracaoAnel(MACHINE_ID, { bRingOffset: ring.b, cRingOffset: ring.c });
   }, [ring]);
 
-  const errors = useMemo(
-    () => FIELD_IDS
-      .filter((id) => parseAngle(values[id]) === null)
-      .map((id) => ({ field: id, message: 'Informe um número válido em graus.' })),
-    [values]
-  );
-  const validOverall = errors.length === 0;
+  // Adapter canônico: parse local (texto→número) + validação estruturada.
+  // Erros de campo alimentam os badges; 'orientacao' alimenta a caixa global.
+  const nums = useMemo(() => ({
+    A: parseAngle(values.A),
+    B: parseAngle(values.B),
+    C: parseAngle(values.C),
+  }), [values]);
+  const validation = useMemo(() => validateHuronInput(nums), [nums]);
+  const errors = validation.errors;
+  const validOverall = validation.valid;
   const shownErrors = submitted ? errors : [];
+  const orientationError = errors.find((e) => e.field === 'orientacao');
 
   const handleField = useCallback((id, raw) => {
     setValues((prev) => ({ ...prev, [id]: raw }));
@@ -53,21 +57,16 @@ export default function HuronPage() {
 
   const handleCalculate = useCallback(() => {
     setSubmitted(true);
-    const nums = {};
-    for (const id of FIELD_IDS) {
-      const n = parseAngle(values[id]);
-      if (n === null) {
-        setResult(null);
-        return;
-      }
-      nums[id] = n;
+    if (!validation.valid) {
+      setResult(null);
+      return;
     }
-    const raw = calculateHuronFlanges(nums);
+    const raw = calculateHuronFlanges({ A: nums.A, B: nums.B, C: nums.C });
     // Sempre compensa: o anel físico só lê 0–360°, então um teórico negativo
     // vira seu equivalente (ex.: −45° → 315°) mesmo com desvio zero.
     const dial = applyRingCalibration(raw, { bRingOffset: ring.b, cRingOffset: ring.c });
     setResult({ input: nums, raw, bFlange: dial.bFlangeRing, cFlange: dial.cFlangeRing });
-  }, [values, ring]);
+  }, [nums, ring, validation]);
 
   const handleClear = useCallback(() => {
     setValues({ A: 0, B: 0, C: 0 });
@@ -136,6 +135,9 @@ export default function HuronPage() {
             )}
             <CopyButton getText={copyText} label="COPIAR RESULTADO" />
           </>
+        )}
+        {submitted && !validOverall && orientationError && (
+          <div className={styles.errorBox} role="alert">{orientationError.message}</div>
         )}
         {result ? (
           <HuronPreview bFlange={result.bFlange} cFlange={result.cFlange} />

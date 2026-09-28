@@ -131,6 +131,17 @@
   font-family: 'Share Tech Mono', monospace;
 }
 
+.errorBox {
+  margin-top: 8px;
+  padding: 10px 12px;
+  background: #1c0f0f;
+  border: 1px solid #e5534b;
+  border-radius: 4px;
+  color: #f0887e;
+  font-size: 12px;
+  font-family: 'Share Tech Mono', monospace;
+}
+
 .views {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(230px, 1fr));
