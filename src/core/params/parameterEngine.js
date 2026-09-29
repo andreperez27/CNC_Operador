@@ -1,15 +1,14 @@
+/**
+ * Motor de Q-parameters (núcleo puro, sem React/DOM).
+ *
+ * PORQUÊ deps declarados em vez de regex em fonte: a verdade sobre as
+ * dependências de uma fórmula é CONTRATO (`deps: ['Q10', ...]` na entrada
+ * do mapa), não algo a adivinhar lendo `formula.toString()` — regex quebra
+ * silenciosamente com desestruturação (`const { Q10 } = ctx`) e gera falso
+ * positivo se um Q aparecer em comentário. O regex sobrevive SÓ como
+ * auditor em `tests/parameterEngine.test.js`, nunca no runtime.
+ */
 import * as geo from '../geometry';
-
-function extractDeps(formulaFn) {
-  const src = formulaFn.toString();
-  const matches = new Set();
-  const re = /ctx\.Q(\d+)/g;
-  let m;
-  while ((m = re.exec(src)) !== null) {
-    matches.add('Q' + m[1]);
-  }
-  return [...matches];
-}
 
 function topologicalSort(depMap) {
   const inDegree = {};
@@ -58,7 +57,13 @@ function topologicalSort(depMap) {
 function resolveFormulas(formulas, ctx) {
   const depMap = {};
   for (const [q, entry] of Object.entries(formulas)) {
-    depMap[q] = extractDeps(entry.formula);
+    // Sem deps declarados, falha fechada em vez de adivinhar via regex.
+    if (!Array.isArray(entry.deps)) {
+      throw new Error(
+        q + ' define formula sem deps declarados (informe deps: [...])'
+      );
+    }
+    depMap[q] = [...new Set(entry.deps)];
   }
 
   for (const [q, deps] of Object.entries(depMap)) {
