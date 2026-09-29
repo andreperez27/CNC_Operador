@@ -1,11 +1,12 @@
 import { useRegisterSW } from 'virtual:pwa-register/react';
 import styles from './UpdateBanner.module.css';
 
-// Aviso de versão nova: com registerType autoUpdate o SW novo se instala
-// sozinho, mas a aba aberta continua no código antigo até recarregar —
-// sem aviso, o próximo chunk lazy dá 404 (hashes trocados no deploy).
+// Aviso de versão nova (modo prompt): o banner só aparece quando há um SW
+// novo esperando, e o botão o ativa (skip-waiting) + recarrega a aba.
+// (No modo autoUpdate o updateServiceWorker() do plugin é no-op e o
+// needRefresh vinha como tupla sempre-truthy: banner eterno e botão morto.)
 export default function UpdateBanner() {
-  const { needRefresh, updateServiceWorker } = useRegisterSW();
+  const { needRefresh: [needRefresh], updateServiceWorker } = useRegisterSW();
 
   if (!needRefresh) return null;
 

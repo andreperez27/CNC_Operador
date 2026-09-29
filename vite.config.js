@@ -17,7 +17,10 @@ export default defineConfig({
   plugins: [
     react(),
     VitePWA({
-      registerType: 'autoUpdate',
+      // prompt: versão nova espera o usuário clicar RECARREGAR (evita reload
+      // automático no meio da operação — app de chão de fábrica tem formulários
+      // em andamento). O 404 de chunk velho segue coberto pelo lazyWithReload.
+      registerType: 'prompt',
       includeAssets: ['favicon.svg', 'icons/icon-192.png', 'icons/icon-512.png', 'icons/apple-touch-icon.png'],
       manifest: {
         name: 'CNC Operador',
