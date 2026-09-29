@@ -15,6 +15,12 @@ Fluxo: admin gera link → testador abre → sessão anônima → resgate →
   `supabase functions deploy convidar`.
 - `supabase/functions/resgatar/` — consumo atômico + vínculo do uid
   (sem rebaixar admin). Deploy manual: `supabase functions deploy resgatar`.
+- `supabase/functions/listar-convites/` — lista convites p/ o painel
+  admin (só metadados, nunca o hash). Deploy manual:
+  `supabase functions deploy listar-convites`.
+- `supabase/functions/revogar-convite/` — cancela convite ativo
+  (condicional e atômico; 409 se já encerrado). Deploy manual:
+  `supabase functions deploy revogar-convite`.
 - `supabase/functions/_shared/auth.ts` — JWT, admin-check, CORS, JSON.
 - `src/features/auth/convites.js` — lê `#convite=` (ou `?convite=`),
   anonimiza, resgata, limpa a URL. Token só em memória.
@@ -29,7 +35,16 @@ Fluxo: admin gera link → testador abre → sessão anônima → resgate →
 3. Edge Functions → Manage secrets: `SUPABASE_URL`,
    `SUPABASE_SERVICE_ROLE_KEY`, `APP_URL`
    (`https://andreperez27.github.io/CNC_Operador`).
-4. Deploy das 2 funções via CLI.
+4. Deploy das funções via CLI (`convidar`, `resgatar`,
+   `listar-convites`, `revogar-convite`).
+
+## Painel admin (acompanhamento)
+
+A página Convites (`features/admin/AdminConvitesPage.jsx`) lista os
+convites com situação (Ativo/Usado/Expirado/Cancelado — expiração
+derivada em `convitesStatus.js`, coberta por
+`tests/convitesPanel.test.js`) e botão REVOGAR p/ ativos. Exige deploy
+das funções `listar-convites` e `revogar-convite` para funcionar.
 
 ## Operação (futura área admin ou chamada direta autenticada)
 
