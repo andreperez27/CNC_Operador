@@ -2,7 +2,9 @@
 
 > Guia Digital do Operador CNC · foco inicial: HEIDENHAIN iTNC 530.
 > Estado: **Fase 2 — Chanfro (item 1), Raio externo/interno (item 2) e Rosca
-> (item 6) concluidos**. Proximas: itens 3–5 (Arco, Furacao, Padrao de furos).
+> (item 6) concluidos; FASE 4 — Cabecote Huron concluida
+> (`features/huron` + `core/machining/huron*` validados)**. Proximas:
+> itens 3–5 (Arco, Furacao, Padrao de furos).
 > Regra: cada fase so avanca apos revisao. O projeto permanece separado do simulador.
 
 ---
@@ -51,11 +53,16 @@ preview por operacao, testes de regressao T1–T14 do inventario passando.
 - arco e tangencia (reusar `core/geometry/circleLine`);
 - RPM, avanco, velocidade de corte (Vc = pi * D * rpm / 1000, avanco por dente).
 
-## FASE 4 — Cabecote Huron
+## FASE 4 — Cabecote Huron — CONCLUIDA
 
-- angulos de inclinacao e calculos de deslocamento;
-- tabelas de angulos por posicao;
-- integracao com a calculadora de coordenadas.
+- `core/machining/huronHead.js` (`calculateHuronFlanges`, `applyRingCalibration`),
+  `huronReachability.js` (gate de alcançabilidade tilt ≤ 90°) e
+  `huronValidation.js` (adapter ValidationEngine);
+- pagina **Cabecote Huron** (`features/huron`): A/B/C → flanges de 45°
+  inferior/superior, calibracao do anel, preview, copiar;
+- `tests/huronHead.test.js` (46) + `tests/ringCalibration.test.js` (5).
+- Pendente da descricao original: tabelas de angulos por posicao e
+  integracao com a calculadora de coordenadas.
 
 ## FASE 5 — Heidenhain iTNC 530
 
@@ -66,10 +73,10 @@ preview por operacao, testes de regressao T1–T14 do inventario passando.
 
 ## FASE 6 — Validacao CNC
 
-- ~~`ValidationEngine` central~~ — **adiantada na Fase 2** (cobre chanfro):
-  valores, NaN/Infinity, divisao por zero, geometria impossivel, folga de
-  ferramenta; **pendente**: estender aos demais solvers (arredondamento,
-  roscas, trigonometria) e coordenadas fora de curso.
+- ~~`ValidationEngine` central~~ — **adiantada na Fase 2** (cobre chanfro,
+  raio, roscas e Huron): valores, NaN/Infinity, divisao por zero,
+  geometria impossivel, folga de ferramenta; **pendente**: estender a
+  trigonometria e coordenadas fora de curso.
 - mensagens em portugues, exibicao na UI (painel de validacao na pagina G-Code Rapido).
 
 ## FASE 7 — Analisador de desenho tecnico

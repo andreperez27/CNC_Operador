@@ -47,6 +47,11 @@
 | F33 | **Regras de processo — furo cego** | `core/process/rules/blindHoleDepth.js` + `core/machining/thread/holeDepth.js` | banco separado da tabela de roscas (norma ≠ regra); `calculateBlindHoleDepth` (solver puro, nunca NaN/Inf), regras 2,5×Ø rosca / 4×Ø broca / 5×Ø rosca / personalizada; `resolveHoleFromInput` com prioridade desenho > operador > regra > padrão; margem inferior configurável; validação furo ≥ rosca | **A** |
 | F34 | **Pipeline canônico de raio externo (arredondamento)** | `core/machining/radius/{model,solver,validation,geometry,strategy,trajectory,template,index}.js` | Reproduz a planilha de setor (§ bloco "Raio de canto externo", `docs/RAIO_SPREADSHEET_REFERENCE.md`): `rho = R + r`, `Xc = Q4 = (D/2 − r) − R`, `Q6(z) = Xc + SQRT(z(2·rho − z))` (identidade do círculo testável), passe final exato em `z = R`, validação estruturada (`INVALID_RADIUS`, `INVALID_RADIUS_RANGE` R<r, `INVALID_TOOL_DIAMETER/RADIUS`, `INVALID_INCREMENT`, `WARN_R_EQUALS_R`, `WARN_SINGLE_PASS`, `WARN_MANY_PASSES`), IR puro → postprocessor; converte Z no IR | **A** |
 | F35 | **Raio no registry + preview + G-Code Rápido** | `features/gcode/registry/canonicalRadius.js`, `registry.js` (`raio_aresta_reta_torica`), `heidenhain/preview/buildRadiusPreviewScene.js`, `gcode/preview/RadiusPreview.jsx`, `gcode/components/preview/GcodePreviewPanel.jsx` (PREVIEW_MAP), `gcode/preview/RoundingEdgePreview`/`RoundEdge` (legado divergente classificado), página G-Code Rápido (seletor Operação Chanfro/Raio + `features/gcoderapido/components/RadiusForm.jsx`) | registry gera via pipeline canônico (mesma saída do G-Code Rápido); `EXTERNAL_RADIUS_MAP` em `heidenhain/params/parameterEngine.js`; preview SVG dedicado (perfil/raios de profundidade/traj. círculo ρ/contato/ferramenta tórica/simulador); o legado `arredondamento_aresta_reta_torica` (arco R, X relativo) mantido só para regressão — classificado **E** | **A** |
+| F36 | **Motor do cabeçote Huron (flanges + gate + adapter)** | `core/machining/huronHead.js` (`calculateHuronFlanges`, `applyRingCalibration`), `huronReachability.js` (`validateHuronReachability`: tilt = acos(cosA·cosB) ≤ 90°, `TILT_EXCEEDS_90` fora do cone), `huronValidation.js` (`validateHuronInput`, adapter ValidationEngine) | sem clamp silencioso, sem caixa em A/B; contrato `ValidationError` fora do domínio | **A** |
+| F37 | **Página "Cabeçote Huron"** | `features/huron/{HuronPage,HuronForm,HuronPreview,ringCalibrationStore}` | A/B/C → flanges de 45° inferior/superior, gate de alcançabilidade com mensagem, calibração do anel (0/90/180/270, `valor teórico` exibido quando ativo), preview, copiar | **A** |
+| F38 | **Portão de acesso Beta (auth)** | `features/auth/{AuthContext,AuthGate,LoginPage,BlockedPage,convites,offlinePolicy,supabaseClient}` + `supabase/` (Edge Functions `convidar`/`resgatar`, migrations `app_users`/`beta_convites`) | sessão Supabase + linha própria em `app_users` decidem (online o banco decide); tolerância offline de 7 dias via concessão local; convite por link (token 256 bits, só hash no banco, uso único); aba Convites só visível p/ admin | **A** |
+| F39 | **Página "Convites" (admin)** | `features/admin/AdminConvitesPage.jsx` | admin-only (visual + server-side na Edge): apelido, expiração do Beta, validade do convite → link; token só em memória | **B** |
+| F40 | **Página "Início"** | `features/home/HomePage.jsx` | cards de navegação dos 4 módulos de cálculo (Roscas, Trigonometria, G-Code Rápido, Cabeçote Huron) | **A** |
 
 ## 2. Entradas e saídas por funcionalidade principal
 
@@ -126,6 +131,8 @@ relação ferramenta ↔ operação validada. Estrutura futura: `core/tools`.
 | Validação | Onde | Comportamento |
 |---|---|---|
 | **ValidationEngine estruturado (canônico)** ★ | `core/validation/validationEngine.js` + `core/machining/chamfer/validation.js` | `{valid, errors[{code,field,message}], warnings[]}`; códigos `INVALID_TYPE/WIDTH/ANGLE/DEPTH/PASS_DEPTH/TOOL_TYPE/TOOL_DIAMETER/TOOL_RADIUS/LENGTH/POCKET_WIDTH/CLEARANCE/SPINDLE_SPEED/FEED` + `WARN_SMALL_ANGLE/DEPTH_OVERRIDE/MANY_PASSES`; bloqueia A=0/90, passeZ≤0 (evita loop infinito), r>D/2, D≤0, r<0 |
+| **Validação de rosca (canônico)** ★ | `core/machining/thread/validation.js` + `holeDepth.js` | `INVALID_THREAD/SPINDLE_SPEED/DEPTH/HAND/.../HOLE_RULE/HOLE_MARGIN/HOLE_DEPTH/HOLE_TOO_SHALLOW` (furo raso com code próprio); furo < rosca nunca gera programa |
+| **Validação do Huron (adapter)** ★ | `core/machining/huronValidation.js` (adapter) + `huronReachability.js` (regra) | `{valid, errors, warnings}`; `INVALID_ANGLE` por eixo, `TILT_EXCEEDS_90` no campo `orientacao`; a UI bloqueia o cálculo quando inválido |
 | Folga de ferramenta no bolsão (D+margem ≤ alojamento, margem 2 mm) | `core/machining/chamfer/validation.js` (INVALID_CLEARANCE) — chamferInternalMath mantém `throw` legado por compatibilidade | erro estruturado com a MESMA mensagem PT ("Ferramenta D60.0 nao cabe…") |
 | Tangência (dist centro−contato = Reff ± 0.001) | core/machining/contactGeometry.validateContact | OK/ERRO, usado nos previews |
 | Parâmetros positivos (G-Code rápido legado) | gcode/utils/validators | `≤0`, NaN → lista de erros PT (mantido na aba G-Code) |
@@ -158,9 +165,12 @@ relação ferramenta ↔ operação validada. Estrutura futura: `core/tools`.
 
 | Tela | Finalidade | Controles | Navegação |
 |---|---|---|---|
+| Início | Cards de navegação dos módulos | 4 cards (Roscas, Trigonometria, G-Code Rápido, Cabeçote Huron) | tab “Início” (inicial) |
 | Roscas | Busca por família/designação + programa .H (pipeline canônico) | busca (família/designação), detalhe, formulário (prof. rosca, rpm, furo cego, fresa p/ helicoidal), preview SVG, copiar/download .H | tab “Roscas” |
 | Trigon. | Cálculo de triângulo retângulo | 5 campos numéricos, CALCULAR/LIMPAR/GIRAR | tab “Trigon.” |
 | G-Code Rápido ★ | Programa Heidenhain de chanfro (ext./int.) em poucos campos | tipo, largura/ângulo/profundidade/passeZ, ferramenta (tipo/D/r), RPM/avanço, origem exibida, validação ✓/❌ por campo + painel, preview SVG canônico, resultados, Q-params, exportar/copiar .H | tab “G-Code Rapido” |
+| Cabeçote Huron | Ângulos do cabeçote HURON 45 | A/B/C, CALCULAR/LIMPAR, calibração do anel, flanges inf/sup, preview, copiar resultado | tab “Cabeçote Huron” |
+| Convites | Geração de links Beta (admin) | apelido, expiração do Beta, validade do convite, copiar link | tab “Convites” (só admin) |
 | G-Code | Chanfro/arredondamento rápido (legado) | seletor de operação, formulário, preview com destaque por foco | **desmontada** (arquivo `features/gcode/GCodePage.jsx` existe, sem rota — classe E) |
 | Heidenhain | Programa .H completo | seletor de operação (ext./int.), painel de parâmetros + tipo de ferramenta, toggles de visualização, copy/export | **desmontada** (arquivo `features/heidenhain/pages/HeidenhainPage.jsx` existe, sem rota — classe E) |
 
@@ -169,10 +179,12 @@ Heidenhain, Manual, Analisador de desenho, Simulador) — não implementar agora
 
 ## 10. Testes de regressão (Tarefa 10) — plano e casos registrados
 
-Vitest instalado (devDependency, `npm test`). **188 testes passando** em
-`tests/` (números vigentes; ver README.md): `chamfer` (31), `validation` (7), `toolTypes` (4), `triangle` (3),
+Vitest instalado (devDependency, `npm test`). **264 testes passando** em
+`tests/` (números vigentes; ver README.md): `chamfer` (31),
+`chamferProgramLabels` (2), `validation` (7), `toolTypes` (4), `triangle` (3),
 `registryMigration` (6), `productionReference` (13), `previewContract` (4),
-`thread` (40), `processRules` (34), `radius` (46).
+`thread` (56), `processRules` (35), `radius` (46), `huronHead` (46),
+`ringCalibration` (5), `betaResgateDecision` (6).
 
 ### 10.1 Casos críticos com valores esperados
 
