@@ -21,7 +21,8 @@
  *   INVALID_HOLE_MARGIN    margem inferior do furo negativa/não numérica
  *   INVALID_HOLE_CUSTOM_FACTOR     (personalizada) fator ausente/<= 0
  *   INVALID_HOLE_CUSTOM_REFERENCE  (personalizada) referência fora de threadDiameter|drillDiameter
- *   INVALID_HOLE_DEPTH     profundidade do furo ausente/<= 0 ou MENOR que a da rosca
+  *   INVALID_HOLE_DEPTH     profundidade do furo ausente/<= 0
+  *   INVALID_HOLE_TOO_SHALLOW  furo válido porém MENOR que a profundidade da rosca
  *
  * Regras de segurança: nenhum NaN/Infinity entra no cálculo (isFinite*).
  */
@@ -155,11 +156,14 @@ export function validateThreadInput(input, ctx) {
       'Profundidade do furo deve ser um numero maior que zero.');
   }
 
-  // consistência do furo cego: margem válida e furo >= profundidade da rosca
+  // consistência do furo cego: margem válida e furo >= profundidade da rosca.
+  // O code do furo raso (TOO_SHALLOW) é propagado como está — distinto do
+  // furo inválido (DEPTH) — com a mesma mensagem pt-BR de holeDepth.
   if (hole && !hole.valid) {
-    const isMargin = hole.code === 'INVALID_HOLE_MARGIN';
-    addError(v, isMargin ? 'INVALID_HOLE_MARGIN' : 'INVALID_HOLE_DEPTH',
-      isMargin ? 'margem' : 'profundidadeFuro', hole.error);
+    const code = hole.code === 'INVALID_HOLE_MARGIN' || hole.code === 'INVALID_HOLE_TOO_SHALLOW'
+      ? hole.code
+      : 'INVALID_HOLE_DEPTH';
+    addError(v, code, hole.code === 'INVALID_HOLE_MARGIN' ? 'margem' : 'profundidadeFuro', hole.error);
   }
 
   return finalize(v);

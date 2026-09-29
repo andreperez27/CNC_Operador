@@ -116,6 +116,6 @@ export function resolveHoleFromInput(input, thread) {
         : !finalUsable
           ? 'Profundidade do furo deve ser um numero maior que zero.'
           : 'Profundidade do furo e menor que a profundidade da rosca.',
-    code: valid ? null : !marginValid ? 'INVALID_HOLE_MARGIN' : !finalUsable ? 'INVALID_HOLE_DEPTH' : 'INVALID_HOLE_DEPTH',
+    code: valid ? null : !marginValid ? 'INVALID_HOLE_MARGIN' : !finalUsable ? 'INVALID_HOLE_DEPTH' : 'INVALID_HOLE_TOO_SHALLOW',
   };
 }

@@ -158,8 +158,15 @@ describe('resolveHoleFromInput — prof. da rosca × prof. do furo (independente
   it('furo cego: furo menor que a rosca → inválido', () => {
     const r = resolveHoleFromInput({ depth: 20, holeMargin: 5, holeRule: 'process:5x-thread-diameter', holeDepth: 15 }, M10);
     expect(r.valid).toBe(false);
-    expect(r.code).toBe('INVALID_HOLE_DEPTH');
+    expect(r.code).toBe('INVALID_HOLE_TOO_SHALLOW');
     expect(r.error).toMatch(/menor que a profundidade da rosca/);
+  });
+
+  it('furo raso (12 < rosca 20) → INVALID_HOLE_TOO_SHALLOW com mensagem pt-BR', () => {
+    const r = resolveHoleFromInput({ depth: 20, holeMargin: 5, holeDepth: 12 }, M10);
+    expect(r.valid).toBe(false);
+    expect(r.code).toBe('INVALID_HOLE_TOO_SHALLOW');
+    expect(r.error).toBe('Profundidade do furo e menor que a profundidade da rosca.');
   });
 
   it('margem negativa → inválido', () => {
@@ -208,7 +215,7 @@ describe('integração com o solver de rosca', () => {
     const r = solveThread({ ...BASE, holeDepth: 15 });
     expect(r.valid).toBe(false);
     expect(r.model).toBeNull();
-    expect(r.validation.errors.some((e) => e.code === 'INVALID_HOLE_DEPTH')).toBe(true);
+    expect(r.validation.errors.some((e) => e.code === 'INVALID_HOLE_TOO_SHALLOW')).toBe(true);
     expect(r.validation.errors.some((e) => e.message.includes('Profundidade do furo e menor que a profundidade da rosca'))).toBe(true);
   });
 
