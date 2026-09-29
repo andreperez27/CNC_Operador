@@ -37,6 +37,20 @@ Fluxo: admin gera link → testador abre → sessão anônima → resgate →
 → `{ link, expira_em }` → copiar e enviar. Validade do convite default 7
 dias (teto 30); validade do Beta = `expiracao_beta` do convite.
 
+## Resgate por uid já existente (sem queimar convite)
+
+- **Admin abre um link válido:** o convite NÃO é consumido; resposta
+  `{ ok: true, note: 'already-admin' }` (a linha admin segue intacta).
+  Convite inválido/expirado continua `410` com mensagem única.
+- **Beta existente abre um novo link:** o convite é consumido e
+  `data_expiracao` vai para a MAIS DISTANTE entre a atual e a
+  `expiracao_beta` do convite (nunca encurta), com `ativo: true`.
+- **Uid novo:** insert como antes.
+- A escolha vive em `supabase/functions/resgatar/decision.ts` (função
+  pura `decidirResgate`, coberta por `tests/betaResgateDecision.test.js`);
+  a Edge Function só executa o efeito. Uso único, atomicidade e
+  anti-enumeração mantidos.
+
 ## Segurança (resumo)
 
 Token nunca persistido nem logado; hash + uso único transacional +

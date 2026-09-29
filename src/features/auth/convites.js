@@ -62,7 +62,9 @@ export function acceptInvite(token) {
         body: { token },
       });
       if (error || !res?.ok) return { ok: false, error: 'invalid' };
-      return { ok: true };
+      // `note: 'already-admin'` (admin resgatando link válido): continua
+      // sucesso — o note só distingue o caso para a UI, sem quebrar nada.
+      return { ok: true, note: res?.note };
     } catch {
       return { ok: false, error: 'network' };
     } finally {
