@@ -2,17 +2,20 @@
 
 Estrutura de autorização do CNC Operador (fase Beta). Código em
 `src/features/auth/`; migration em
-`supabase/migrations/20260924_create_app_users.sql` (**ainda não aplicada**).
+`supabase/migrations/20260924_create_app_users.sql` (**aplicada em
+2026-09-27** no projeto `Operador_cnc` — ver diário de 2026-09-27,
+"Convites Beta — CONCLUÍDO e validado ponta a ponta").
 
-## Como aplicar (manual, Dashboard do projeto `Operador_cnc`)
+## Como foi aplicado [Registro — já executado em 2026-09-27]
 
-1. SQL Editor → colar a migration → Run.
-2. Authentication → criar cada usuário (email + senha, sem auto-cadastro).
+1. SQL Editor → migration colada → Run.
+2. Authentication → usuários criados (email + senha, sem auto-cadastro).
 3. Table Editor → `app_users` → uma linha por usuário com `id` = UID do Auth:
    admin (`tipo='admin'`, sem expiração) e betas (`tipo='beta'`,
    `ativo=true`, `data_expiracao` quando houver).
 4. Repo → Settings → Secrets → Actions: `VITE_SUPABASE_URL`,
-   `VITE_SUPABASE_ANON_KEY`. Só então o deploy passa a exigir login.
+   `VITE_SUPABASE_ANON_KEY` configurados (deploy verde com login
+   funcionando comprova). A partir daí o deploy passou a exigir login.
 
 ## Tabela `app_users`
 
@@ -43,8 +46,10 @@ bloqueio genérica. Tolerância offline de 7 dias via concessão local
 
 ## Pendências (fora desta migration)
 
-Admin e betas no Dashboard · secrets no GitHub · tela de administração
-futura · licenças/empresas futuras.
+- ~~secrets no GitHub~~ — **concluído** (deploy verde com login comprova);
+- tela de administração completa (listar/revogar) — o mini-admin de
+  geração existe (`features/admin/AdminConvitesPage.jsx`); falta o resto;
+- Admin e betas no Dashboard (gestão contínua) · licenças/empresas futuras.
 
 ## Convites sem e-mail
 
