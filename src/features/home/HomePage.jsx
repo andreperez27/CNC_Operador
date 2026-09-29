@@ -1,3 +1,4 @@
+import { useAuth } from '../auth/useAuth';
 import styles from './HomePage.module.css';
 
 function RoscaIcon() {
@@ -39,19 +40,33 @@ function HuronIcon() {
   );
 }
 
+function ConviteIcon() {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+      <rect x="3" y="6" width="18" height="13" rx="2" />
+      <path d="M3 7.5l9 6 9-6" />
+    </svg>
+  );
+}
+
 const MODULES = [
   { id: 'roscas', title: 'Roscas', sub: 'Tabela métrica + programa .H', Icon: RoscaIcon },
   { id: 'trigonometria', title: 'Trigonometria', sub: 'Triângulo retângulo', Icon: TrianguloIcon },
   { id: 'gcoderapido', title: 'G-Code Rápido', sub: 'Chanfro e raio ext./int.', Icon: GcodeIcon },
   { id: 'huron', title: 'Cabeçote Huron', sub: 'Flanges de 45°', machine: 'Máquina: Portal Feller', Icon: HuronIcon },
+  { id: 'convites', title: 'Convites', sub: 'Gerar e acompanhar Beta', adminOnly: true, Icon: ConviteIcon },
 ];
 
 export default function HomePage({ onNavigate }) {
+  const { profile } = useAuth();
+  // Filtro puramente visual, igual ao NavTabs: a autorização real de gerar
+  // convites é server-side, na Edge Function `convidar`.
+  const visible = MODULES.filter((m) => !m.adminOnly || profile?.tipo === 'admin');
   return (
     <div className="page">
       <div className={styles.hint}>Escolha um módulo</div>
       <div className={styles.grid}>
-        {MODULES.map(({ id, title, sub, machine, Icon }) => (
+        {visible.map(({ id, title, sub, machine, Icon }) => (
           <button key={id} type="button" className={styles.card} onClick={() => onNavigate(id)}>
             <span className={styles.icon}><Icon /></span>
             <span className={styles.title}>{title}</span>
