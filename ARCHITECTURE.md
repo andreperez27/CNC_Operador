@@ -1,7 +1,8 @@
 # ARCHITECTURE.md — CNC Operador
 
 > Guia Digital do Operador CNC — foco inicial: **HEIDENHAIN iTNC 530**.
-> Projeto separado do simulador CNC. Funciona 100% offline (PWA).
+> Projeto separado do simulador CNC. PWA offline-first com portão de
+> acesso (primeira validação online; depois, tolerância offline de 7 dias).
 
 ---
 
