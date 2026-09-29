@@ -41,7 +41,11 @@ import { validateContact } from '../contactGeometry';
 export function normalizeChamferInput(input) {
   const tool = input.tool || {};
   return {
-    A: input.width,
+    // A é o ÂNGULO (graus) — nunca a largura: model.params.A alimenta o
+    // rótulo Q1/Q1 do programa .H ("ANGULO DO CHANFRO"). A geometria usa
+    // input.angle diretamente, por isso o bug aqui só corrompia o rótulo
+    // sem quebrar a paridade numérica (ver tests/chamferProgramLabels).
+    A: input.angle,
     C: input.width,
     D: tool.diameter,
     r: tool.radius,
