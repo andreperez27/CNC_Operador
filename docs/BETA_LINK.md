@@ -24,9 +24,10 @@ Fluxo: admin gera link → testador abre → sessão anônima → resgate →
 - `supabase/functions/_shared/auth.ts` — JWT, admin-check, CORS, JSON.
 - `src/features/auth/convites.js` — lê `#convite=` (ou `?convite=`),
   anonimiza, resgata, limpa a URL. Token só em memória.
-- `LoginPage.jsx` — ponto de entrada do aceite (deslogado). Nada mais
-  da UI foi tocado: AuthGate, AuthContext, offlinePolicy, RLS atual,
-  App, navegação e login normal estão intactos.
+- `LoginPage.jsx` — ponto de entrada do aceite (deslogado).
+- `AuthGate.jsx` + `auth/conviteFlow.js` — aceite também quando JÁ EXISTE
+  sessão (ver abaixo). Login e-mail/senha, `AuthContext`,
+  `offlinePolicy`, RLS atual, App e navegação intactos.
 
 ## Configuração (Dashboard, manual)
 
@@ -65,6 +66,36 @@ dias (teto 30); validade do Beta = `expiracao_beta` do convite.
   pura `decidirResgate`, coberta por `tests/betaResgateDecision.test.js`);
   a Edge Function só executa o efeito. Uso único, atomicidade e
   anti-enumeração mantidos.
+
+## Convite aberto COM sessão já ativa (correção 2026-09-29)
+
+**Sintoma:** o testeador abria o link, o app abria normalmente e o convite
+continuava **Ativo** no painel — sem erro em tela nenhuma.
+
+**Causa:** o aceite vivia só no `LoginPage`, que **não monta** quando há
+sessão válida. Admin testando o próprio fluxo e beta em dia recebiam o app
+liberado, mas o token ficava preso na URL e `resgatar` **nunca era
+chamado** — o resgate não existia. Confirmado no banco: linha com
+`status = 'ativo'`, `usado_em` e `usado_por` nulos.
+
+**Correção:** `AuthGate` roda o aceite também nos estados que não montam o
+LoginPage, com a decisão pura em `auth/conviteFlow.js`
+(`deveProcessarConviteComSessao`, coberta por
+`tests/conviteAuthFlow.test.js`):
+
+- **granted (admin ou beta em dia):** o servidor decide — admin recebe
+  `note: 'already-admin'` e a tela avisa que o convite **não** foi
+  consumido; beta existente estende a validade.
+- **denied por inativo/expirado:** o link novo é uma renovação legítima;
+  o resgate roda e `refresh()` reavalia o acesso.
+- `loading`, `signed-out` e `denied`/`no-profile` seguem no `LoginPage`
+  (evita POST em duplicado; estado desconhecido não dispara resgate).
+- Falha mostra a mensagem correspondente em vez de abrir o app em silêncio.
+
+**Requisito de deploy:** a mensagem de "já admin" depende do `resgatar`
+com `decision.ts`. A v3 publicada não tem isso: ela **consome** o convite do
+admin sem mudar o acesso (a linha vira "Usado" e nada acontece). Publicar
+`supabase functions deploy resgatar` para o comportamento correto.
 
 ## Segurança (resumo)
 
