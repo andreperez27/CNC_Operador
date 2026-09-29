@@ -1,0 +1,23 @@
+.banner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 8px 12px;
+  background: #14202e;
+  border-bottom: 1px solid #2b3f55;
+  color: #d7e3f0;
+  font-size: 13px;
+}
+
+.reload {
+  flex-shrink: 0;
+  padding: 6px 14px;
+  background: #1f6feb;
+  border: 1px solid #1f6feb;
+  border-radius: 4px;
+  color: #fff;
+  font-size: 12px;
+  font-weight: bold;
+  cursor: pointer;
+}
