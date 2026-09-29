@@ -138,7 +138,7 @@ relação ferramenta ↔ operação validada. Estrutura futura: `core/tools`.
 
 ## 7. Duplicações e código morto (Tarefa 1, classes D/E)
 
-- **D1** — `gcode/components/preview/{ChamferEdgePreview, RoundingEdgePreview, chamferPreviewHelpers, roundingPreviewHelpers, preview.module.css}` são cópias obsoletas; todos os imports vivos apontam para `gcode/preview/*`.
+- **D1** — `gcode/components/preview/{ChamferEdgePreview, RoundingEdgePreview, chamferPreviewHelpers, roundingPreviewHelpers, preview.module.css}`: **RESOLVIDA** — cópias obsoletas removidas (imports vivos confirmados só em `gcode/preview/*`; `GcodePreviewPanel.jsx` mantido, usa `gcode/preview/` + css vivo).
 - **D2** — Previews internos (`InternalChamferPreview`, `InternalRadiusPreview`, build models) órfãos: **RESOLVIDA** — voltaram a ter consumidor (registry `raio_aresta_reta_torica` com tipo internal + página G-Code Rápido); resta apenas a limpeza das cópias obsoletas D1.
 - **D3** — `previewGeometry.js` duplicado entre gcode e heidenhain (arcPath/VIEW/COLORS).
 - **D4** — Funcionalidade "chanfro" nos dois pipelines: **RESOLVIDA (Fase 2)** — G-Code legado e página G-Code Rápido usam o mesmo pipeline canônico (`solveChamfer` → IR → postprocessor). Página Heidenhain consome via adapters (`base/math/toCanonicalInput` + `buildChamferProgram`); templates legados `chamferExternalTemplate.js`/`chamferInternalTemplate.js` mantidos como fontes validadas (o IR canônico reproduz byte-a-byte ambos).
