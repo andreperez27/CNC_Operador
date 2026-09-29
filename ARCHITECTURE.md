@@ -7,25 +7,38 @@
 
 ## 1. Visão geral atual
 
-O aplicativo é um SPA React (Vite + PWA) composto por **3 abas montadas**
-(`src/app/App.jsx` — somente estas estão ativas; páginas existentes porém
+O aplicativo é um SPA React (Vite + PWA) composto por **6 páginas montadas**
+(`src/app/App.jsx` — entrada `App → AuthProvider → AuthGate → abas`,
+com páginas em `lazy` + `Suspense`; páginas existentes porém
 desmontadas, p. ex. `features/gcode/GCodePage.jsx` e
 `features/heidenhain/pages/HeidenhainPage.jsx`, são legado classe E):
 
 | Aba | Feature | Função |
 |---|---|---|
+| Início | `features/home` | Cards de navegação dos módulos |
 | Roscas | `features/roscas` | Tabela métrica M1–M64 (passo/furo/ciclo) + geração de G-Code (rosca rígida CYCL DEF 207 e interpolação helicoidal) + furo cego |
 | Trigon. | `features/trigonometria` | Solver de triângulo retângulo com preview SVG |
 | G-Code Rapido | `features/gcoderapido` | Chanfro externo/interno e raio externo/interno (bolsão) com pipeline canônico (solver → validação → estratégia → IR → postprocessor), validação ✓/❌, preview e exportação .H |
+| Cabeçote Huron | `features/huron` | Calculadora de ângulos do cabeçote HURON 45 (flanges de 45° a partir de A/B/C) com gate de alcançabilidade e calibração do anel |
+| Convites | `features/admin` | Admin-only: geração de links Beta via Edge Function |
 
 Infraestrutura transversal:
 
 - `core/geometry` — vetores/linhas/círculos/ângulos 2D (plano XZ), puro, sem React.
-- `core/machining` — **pipeline canônico de usinagem**: `chamfer/` (solver,
-  validação, geometria, estratégia, trajetória, template IR), `contactGeometry`,
-  `coordinates` (convenção — ver `docs/COORDINATE_SYSTEM.md`).
+- `core/machining` — **pipelines canônicos de usinagem**: `chamfer/` (solver,
+  validação, geometria, estratégia, trajetória, template IR), `radius/`
+  (externo/interno reproduzindo a planilha), `thread/` (banco + solver +
+  validação + furo cego), `huronHead`/`huronReachability`/`huronValidation`
+  (flanges do cabeçote, gate de alcançabilidade tilt ≤ 90°, adapter
+  ValidationEngine), `contactGeometry`, `coordinates`
+  (convenção — ver `docs/COORDINATE_SYSTEM.md`).
 - `core/validation` — **ValidationEngine** estruturado (`createValidation`,
-  `addError/addWarning`, códigos `INVALID_*`/`WARN_*`).
+  `addError/addWarning`, códigos `INVALID_*`/`WARN_*`), cobrindo chanfro,
+  raio, rosca e Huron (adapter); falta trigonometria.
+- `features/auth` + `features/admin` — portão de acesso Beta (ver
+  "Autenticação e autorização (Beta)" abaixo).
+- `supabase/` — Edge Functions `convidar`/`resgatar` + migrations
+  (`app_users`, `beta_convites`); deploy e SQL manuais.
 - `core/tools` — catálogo canônico de ferramentas (`toolTypes`).
 - `core/params/parameterEngine` — resolução de Q-parameters com fórmulas e detecção de dependência circular.
 - `core/program` — **IR (Intermediate Representation)** de blocos de programa, independente de dialeto.
@@ -33,7 +46,19 @@ Infraestrutura transversal:
 - `core/validators`, `core/export` — validação de folga de ferramenta; download de arquivo.
 - `components/*` — UI genérica (Card, ResultBox, CopyButton, Header, NavTabs).
 - `shared/*` — formatação numérica e hook de copiar.
-- `tests/*` — suite vitest (51 testes; `npm test`).
+- `tests/*` — suite vitest (**264 testes**; `npm test`).
+
+### 1.1 Autenticação e autorização (Beta)
+
+- Backend: Supabase. A tabela `app_users` + RLS decide o acesso
+  (linha própria, `ativo=true`, `data_expiracao` nula ou futura);
+  online, o banco sempre decide.
+- Concessão local de 7 dias (`features/auth/offlinePolicy.js`): após
+  validação online, o acesso segue sem internet; sem concessão válida,
+  bloqueia.
+- Convites por link: token de 256 bits (só o hash no banco), uso único
+  atômico, Edge Functions `convidar`/`resgatar`.
+- Detalhes em `docs/AUTH_BETA.md` e `docs/BETA_LINK.md`.
 
 ## 2. Fluxo de dados
 
@@ -139,7 +164,9 @@ referência manual (4 configurações estáticas de desenho).
 
 1. **Duas pipelines de geração G-Code** (Heidenhain IR vs. strings legadas do
    G-Code rápido/roscas) que produzem a mesma categoria de resultado.
-   → **Chanfro MIGRADO para IR (Fase 2, D4)**; falta arredondamento e roscas.
+   → **Chanfro, raio (F34/F35) e roscas (F31) MIGRADOS para IR**; o legado
+   `arredondamento_aresta_reta_torica` (arco R, X relativo) segue pendente
+   (classe E, só regressão).
 2. **Duas convenções de origem Z nos chanfros**:
    - externo: origem na superfície (Z positivo para baixo, no preview `SVG_Y = +z`);
    - interno: origem no canto do bolsão (Z positivo para cima, preview `SVG_Y = −z`).
@@ -162,8 +189,9 @@ referência manual (4 configurações estáticas de desenho).
 7. **Cálculos duplicados entre features** — **eliminados para o chanfro (D4)**;
    pendente no arredondamento (profZ/largX/cotA continuam em 1 arquivo legado).
 8. **Validação não centralizada** — **resolvido (Fase 2)**: ValidationEngine
-   canônico (`core/validation`) com códigos estruturados cobre chanfro; falta
-   estender aos demais módulos (arredondamento, roscas, trigonometria).
+   canônico (`core/validation`) com códigos estruturados cobre chanfro,
+   raio, roscas e Huron (adapter); falta estender à trigonometria
+   e a coordenadas fora de curso.
 9. **Sem testes automatizados** — **resolvido (Fase 2)**: vitest + 51 testes
    (T1–T14 incl. paridade byte-a-byte com templates legados).
 
@@ -222,8 +250,8 @@ Princípios:
 
 | Verificação | Estado |
 |---|---|
-| `vite build` | OK — precache 31 entradas (~502 KiB), PWA `generateSW` |
-| `npm run lint` (oxlint) | 0 erros; 17 warnings pré-existentes (unused vars no legado, sem impacto) — 129 arquivos |
-| `npm test` (vitest) | **188/188 testes passando** (chanfro, raio ext/int, roscas, regras de furo cego, paridade byte-a-byte, registry, trigonometria, validação) |
+| `vite build` | OK — precache 39 entradas (~1352 KiB), PWA `generateSW` |
+| `npm run lint` (oxlint) | 0 erros; 13 warnings (unused vars no legado, sem impacto) — 151 arquivos |
+| `npm test` (vitest) | **264/264 testes passando** (chanfro, raio ext/int, roscas, regras de furo cego, Huron, decisão de resgate Beta, paridade byte-a-byte, registry, trigonometria, validação) |
 | PWA/offline | Fontes locais, service worker + navigateFallback, instalação (ícones PNG) |
 | `build.target` | ES2018 (navegadores/sistemas antigos) |
