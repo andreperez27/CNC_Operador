@@ -10,14 +10,14 @@ import {
   RING_OPTIONS,
   parseAngles,
   formatResultEcho,
+  formatRingNote,
+  buildCopyText,
   initHuronPageState,
   huronPageReducer,
 } from './huronPageState';
 import styles from './HuronPage.module.css';
 
 const MACHINE_ID = 'feller-huron45';
-
-const formatSigned = (v) => (v > 0 ? '+' : '') + String(v);
 
 export default function HuronPage() {
   // Transições em huronPageState.js (puras e testadas): editar campo ou anel
@@ -60,20 +60,14 @@ export default function HuronPage() {
   const isFlat = result !== null && result.raw.bFlange === 0;
 
   const copyText = useCallback(() => {
-    if (!result) return '';
-    const { A, B, C } = result.input;
-    const lines = [
-      `CABECOTE HURON 45 - 3D ROT A=${A} B=${B} C=${C} (graus)`,
-      `Flange inferior (45°): ${result.bFlange.toFixed(4)}°`,
-      isFlat
-        ? 'Flange superior: indefinida (sem inclinacao)'
-        : `Flange superior: ${result.cFlange.toFixed(4)}°`,
-    ];
-    if (ringActive) {
-      lines.push(`Anel: inferior ${formatSigned(ring.b)}°, superior ${formatSigned(ring.c)}°`);
-    }
-    return lines.join('\n');
-  }, [result, isFlat, ringActive, ring]);
+    return buildCopyText(result, { ring, ringActive });
+  }, [result, ringActive, ring]);
+
+  // Legendas congeladas no cálculo (nunca do seletor atual): com offset 0
+  // formatRingNote devolve '' e a tela fica idêntica à anterior.
+  const noteB = result ? formatRingNote(result.ringOffsets.b) : '';
+  const noteC = result ? formatRingNote(result.ringOffsets.c) : '';
+  const hasCalib = Boolean(noteB || noteC);
 
   return (
     <div className="page">
@@ -93,13 +87,16 @@ export default function HuronPage() {
                 <div className={styles.resultItem}>
                   <span className={styles.resultLabel}>Flange inferior (45°)</span>
                   <span className={styles.resultValue}>{result.bFlange.toFixed(4)}°</span>
+                  {noteB && <span className={styles.ringNote}>{noteB}</span>}
                 </div>
                 <div className={styles.resultItem}>
                   <span className={styles.resultLabel}>Flange superior</span>
                   <span className={styles.resultValue}>{isFlat ? '—' : `${result.cFlange.toFixed(4)}°`}</span>
+                  {!isFlat && noteC && <span className={styles.ringNote}>{noteC}</span>}
                 </div>
               </div>
               <div className={styles.theoretical}>{formatResultEcho(result.input)}</div>
+              {hasCalib && <div className={styles.theoretical}>valores já com calibração</div>}
             </ResultBox>
             {ringActive && (
               <div className={styles.theoretical}>

@@ -40,6 +40,10 @@ export function buildHuronResult(nums, ring) {
   const dial = applyRingCalibration(raw, { bRingOffset: ring.b, cRingOffset: ring.c });
   return {
     input: { A: nums.A, B: nums.B, C: nums.C },
+    // Offsets usados NO MOMENTO do cálculo (congelados): a legenda e o eco
+    // nunca divergem do seletor, mesmo que ele mude depois (o que, aliás,
+    // invalida o resultado via RING_CHANGE).
+    ringOffsets: { b: ring.b, c: ring.c },
     raw,
     bFlange: dial.bFlangeRing,
     cFlange: dial.cFlangeRing,
@@ -51,6 +55,44 @@ export function buildHuronResult(nums, ring) {
 export function formatResultEcho(input) {
   if (!input) return '';
   return `calculado para A=${input.A}° B=${input.B}° C=${input.C}°`;
+}
+
+// Legenda de calibração ativa por flange: vazia com offset 0 (tela fica
+// idêntica), 'calib. N°' caso contrário. Cor/posição na apresentação.
+export function formatRingNote(offset) {
+  if (!offset) return '';
+  return `calib. ${offset}°`;
+}
+
+// Linha extra do copiar: inalterada (vazia) com offsets 0.
+export function formatCopyCalibLine(ringOffsets) {
+  const b = ringOffsets?.b ?? 0;
+  const c = ringOffsets?.c ?? 0;
+  if (!b && !c) return '';
+  return `calib. anel: inferior ${b}°, superior ${c}°`;
+}
+
+const formatSigned = (v) => (v > 0 ? '+' : '') + String(v);
+
+// Texto do COPIAR RESULTADO (extraído puro para teste; formato preservado:
+// idêntico ao anterior com offsets 0, mais a linha de calibração quando há).
+export function buildCopyText(result, { ring, ringActive }) {
+  if (!result) return '';
+  const { A, B, C } = result.input;
+  const isFlat = result.raw.bFlange === 0;
+  const lines = [
+    `CABECOTE HURON 45 - 3D ROT A=${A} B=${B} C=${C} (graus)`,
+    `Flange inferior (45°): ${result.bFlange.toFixed(4)}°`,
+    isFlat
+      ? 'Flange superior: indefinida (sem inclinacao)'
+      : `Flange superior: ${result.cFlange.toFixed(4)}°`,
+  ];
+  if (ringActive) {
+    lines.push(`Anel: inferior ${formatSigned(ring.b)}°, superior ${formatSigned(ring.c)}°`);
+  }
+  const calib = formatCopyCalibLine(result.ringOffsets);
+  if (calib) lines.push(calib);
+  return lines.join('\n');
 }
 
 export function initHuronPageState(machineId) {

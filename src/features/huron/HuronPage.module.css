@@ -186,6 +186,12 @@
   font-family: 'Share Tech Mono', monospace;
 }
 
+.ringNote {
+  font-size: 11px;
+  color: var(--orange);
+  font-family: 'Share Tech Mono', monospace;
+}
+
 .calib {
   margin-top: 10px;
   border-top: 1px solid #21262d;
