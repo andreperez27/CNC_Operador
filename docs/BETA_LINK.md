@@ -21,6 +21,17 @@ Fluxo: admin gera link → testador abre → sessão anônima → resgate →
 - `supabase/functions/revogar-convite/` — cancela convite ativo
   (condicional e atômico; 409 se já encerrado). Deploy manual:
   `supabase functions deploy revogar-convite`.
+- `supabase/functions/editar-convite/` — edita apelido (qualquer
+  situação), `expiracao_beta` (ativo: futuros resgates; **usado:
+  propaga exato para `app_users.data_expiracao`**, inclusive
+  encurtando — ato explícito do admin) e validade em dias
+  (`expira_em`, só ativo). Deploy manual:
+  `supabase functions deploy editar-convite`.
+- `supabase/functions/excluir-convite/` — apaga convite NÃO usado
+  (usado retorna 409, preserva auditoria; exclusão atômica com filtro
+  anti-corrida). **Excluir nunca remove acesso** (vínculo mora em
+  `app_users`). Deploy manual:
+  `supabase functions deploy excluir-convite`.
 - `supabase/functions/_shared/auth.ts` — JWT, admin-check, CORS, JSON.
 - `src/features/auth/convites.js` — lê `#convite=` (ou `?convite=`),
   anonimiza, resgata, limpa a URL. Token só em memória.

@@ -33,6 +33,9 @@ export default function AdminConvitesPage() {
   const [carregandoLista, setCarregandoLista] = useState(false);
   const [erroLista, setErroLista] = useState(null);
   const [revogandoId, setRevogandoId] = useState(null);
+  const [editando, setEditando] = useState(null);
+  const [salvando, setSalvando] = useState(false);
+  const [excluindoId, setExcluindoId] = useState(null);
 
   const carregarLista = useCallback(async () => {
     if (profile?.tipo !== 'admin' || !supabase) return;
@@ -124,6 +127,76 @@ export default function AdminConvitesPage() {
     setError(null);
   };
 
+  const handleEditar = (c) => {
+    setErroLista(null);
+    setEditando({
+      id: c.id,
+      nome: c.apelido || 'sem apelido',
+      apelido: c.apelido || '',
+      expiracao_beta: c.expiracao_beta || '',
+      validade: '7',
+      situacao: classificarConvite(c),
+    });
+  };
+
+  const handleSalvar = async (e) => {
+    e.preventDefault();
+    if (!editando || salvando) return;
+    const patch = { id: editando.id, apelido: editando.apelido.trim() || null };
+    if (editando.situacao === 'ativo' || editando.situacao === 'usado') {
+      if (!/^\d{4}-\d{2}-\d{2}$/.test(editando.expiracao_beta)) {
+        setErroLista('Informe a expiração do Beta (AAAA-MM-DD).');
+        return;
+      }
+      patch.expiracao_beta = editando.expiracao_beta;
+    }
+    if (editando.situacao === 'ativo') {
+      patch.validade_convite_dias = Number(editando.validade) || 7;
+    }
+    setSalvando(true);
+    try {
+      const { data, error: fnError } = await supabase.functions.invoke('editar-convite', {
+        body: patch,
+      });
+      if (fnError || !data?.ok) {
+        setErroLista(data?.error || 'Não foi possível salvar o convite.');
+        return;
+      }
+      setEditando(null);
+      await carregarLista();
+    } catch {
+      setErroLista('Sem conexão com o serviço de convites.');
+    } finally {
+      setSalvando(false);
+    }
+  };
+
+  const handleExcluir = async (id, apelido, situacao) => {
+    if (excluindoId) return;
+    const nome = apelido || 'sem apelido';
+    const motivo = situacao === 'ativo'
+      ? `Excluir o convite "${nome}"? O link morrerá e não poderá ser resgatado. Ação irreversível.`
+      : `Excluir o convite "${nome}" do histórico? Ação irreversível.`;
+    if (typeof window !== 'undefined' && !window.confirm(motivo)) {
+      return;
+    }
+    setExcluindoId(id);
+    try {
+      const { data, error: fnError } = await supabase.functions.invoke('excluir-convite', {
+        body: { id },
+      });
+      if (fnError || !data?.ok) {
+        setErroLista(data?.error || 'Não foi possível excluir o convite.');
+        return;
+      }
+      await carregarLista();
+    } catch {
+      setErroLista('Sem conexão com o serviço de convites.');
+    } finally {
+      setExcluindoId(null);
+    }
+  };
+
   return (
     <div className="page">
       <Card title="Convites Beta">
@@ -201,6 +274,64 @@ export default function AdminConvitesPage() {
         {erroLista && (
           <div className="info" role="alert" style={{ color: 'var(--red)' }}>{erroLista}</div>
         )}
+        {editando && (
+          <form onSubmit={handleSalvar}>
+            <div className="info">EDITAR CONVITE — {editando.nome}</div>
+            <div className="fg">
+              <label className="fl" htmlFor="cv-edit-apelido">Apelido</label>
+              <input
+                id="cv-edit-apelido"
+                className="fi"
+                type="text"
+                autoComplete="off"
+                value={editando.apelido}
+                onChange={(e) => setEditando((p) => ({ ...p, apelido: e.target.value }))}
+              />
+            </div>
+            {(editando.situacao === 'ativo' || editando.situacao === 'usado') && (
+              <div className="fg">
+                <label className="fl" htmlFor="cv-edit-expiracao">Expiração do Beta</label>
+                <input
+                  id="cv-edit-expiracao"
+                  className="fi"
+                  type="date"
+                  value={editando.expiracao_beta}
+                  onChange={(e) => setEditando((p) => ({ ...p, expiracao_beta: e.target.value }))}
+                  required
+                />
+              </div>
+            )}
+            {editando.situacao === 'ativo' && (
+              <div className="fg">
+                <label className="fl" htmlFor="cv-edit-validade">Validade do convite (dias, a partir de agora)</label>
+                <input
+                  id="cv-edit-validade"
+                  className="fi"
+                  type="number"
+                  min="1"
+                  max="30"
+                  step="1"
+                  value={editando.validade}
+                  onChange={(e) => setEditando((p) => ({ ...p, validade: e.target.value }))}
+                />
+              </div>
+            )}
+            {editando.situacao === 'usado' && (
+              <div className="info">Salvar a expiração atualiza também o acesso já concedido.</div>
+            )}
+            {editando.situacao !== 'ativo' && editando.situacao !== 'usado' && (
+              <div className="info">Convite encerrado: só o apelido pode ser alterado.</div>
+            )}
+            <div className="btn-row">
+              <button className="btn btn-p" type="submit" disabled={salvando}>
+                {salvando ? 'SALVANDO...' : 'SALVAR'}
+              </button>
+              <button className="btn btn-s" type="button" onClick={() => setEditando(null)} disabled={salvando}>
+                CANCELAR
+              </button>
+            </div>
+          </form>
+        )}
         {!erroLista && !carregandoLista && lista.length === 0 && (
           <div className="info">Nenhum convite gerado ainda.</div>
         )}
@@ -231,16 +362,35 @@ export default function AdminConvitesPage() {
                       </td>
                       <td style={{ padding: '6px 8px', fontFamily: 'var(--mono)' }}>{fmtDateTime(c.usado_em)}</td>
                       <td style={{ padding: '6px 8px' }}>
-                        {podeRevogar && (
+                        <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+                          {podeRevogar && (
+                            <button
+                              className="btn btn-s"
+                              type="button"
+                              disabled={revogandoId === c.id}
+                              onClick={() => handleRevogar(c.id, c.apelido)}
+                            >
+                              {revogandoId === c.id ? 'REVOGANDO...' : 'REVOGAR'}
+                            </button>
+                          )}
                           <button
                             className="btn btn-s"
                             type="button"
-                            disabled={revogandoId === c.id}
-                            onClick={() => handleRevogar(c.id, c.apelido)}
+                            onClick={() => handleEditar(c)}
                           >
-                            {revogandoId === c.id ? 'REVOGANDO...' : 'REVOGAR'}
+                            EDITAR
                           </button>
-                        )}
+                          {situacao !== 'usado' && (
+                            <button
+                              className="btn btn-s"
+                              type="button"
+                              disabled={excluindoId === c.id}
+                              onClick={() => handleExcluir(c.id, c.apelido, situacao)}
+                            >
+                              {excluindoId === c.id ? 'EXCLUINDO...' : 'EXCLUIR'}
+                            </button>
+                          )}
+                        </div>
                       </td>
                     </tr>
                   );
