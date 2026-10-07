@@ -1,37 +1,29 @@
-import { useState, useMemo, useCallback, useEffect } from 'react';
+import { useMemo, useCallback, useEffect, useReducer } from 'react';
 import Card from '../../components/Card';
 import ResultBox from '../../components/ResultBox';
 import CopyButton from '../../components/CopyButton';
 import HuronForm from './HuronForm';
 import HuronPreview from './HuronPreview';
-import { calculateHuronFlanges, applyRingCalibration } from '../../core/machining/huronHead';
 import { validateHuronInput } from '../../core/machining/huronValidation';
-import { getCalibracaoAnel, setCalibracaoAnel } from './ringCalibrationStore';
+import { setCalibracaoAnel } from './ringCalibrationStore';
+import {
+  RING_OPTIONS,
+  parseAngles,
+  formatResultEcho,
+  initHuronPageState,
+  huronPageReducer,
+} from './huronPageState';
 import styles from './HuronPage.module.css';
 
 const MACHINE_ID = 'feller-huron45';
 
-function parseAngle(raw) {
-  if (raw === '' || raw === null || raw === undefined) return null;
-  // Teclado mobile pt-BR pode entregar vírgula como separador decimal.
-  const n = Number(String(raw).replace(',', '.'));
-  return Number.isFinite(n) ? n : null;
-}
-
-const RING_OPTIONS = [0, 90, 180, 270];
-
 const formatSigned = (v) => (v > 0 ? '+' : '') + String(v);
 
 export default function HuronPage() {
-  const [values, setValues] = useState({ A: 0, B: 0, C: 0 });
-  const [submitted, setSubmitted] = useState(false);
-  const [result, setResult] = useState(null);
-  const [ring, setRing] = useState(() => {
-    // Valores fora das 4 posições voltam pra 0 (o anel só trava a cada 90°).
-    const saved = getCalibracaoAnel(MACHINE_ID);
-    const snap = (v) => (RING_OPTIONS.includes(v) ? v : 0);
-    return { b: snap(saved.bRingOffset), c: snap(saved.cRingOffset) };
-  });
+  // Transições em huronPageState.js (puras e testadas): editar campo ou anel
+  // invalida o resultado; CALCULAR só calcula com entrada válida.
+  const [state, dispatch] = useReducer(huronPageReducer, MACHINE_ID, initHuronPageState);
+  const { values, submitted, result, ring } = state;
   const ringActive = ring.b !== 0 || ring.c !== 0;
 
   useEffect(() => {
@@ -40,11 +32,7 @@ export default function HuronPage() {
 
   // Adapter canônico: parse local (texto→número) + validação estruturada.
   // Erros de campo alimentam os badges; 'orientacao' alimenta a caixa global.
-  const nums = useMemo(() => ({
-    A: parseAngle(values.A),
-    B: parseAngle(values.B),
-    C: parseAngle(values.C),
-  }), [values]);
+  const nums = useMemo(() => parseAngles(values), [values]);
   const validation = useMemo(() => validateHuronInput(nums), [nums]);
   const errors = validation.errors;
   const validOverall = validation.valid;
@@ -52,30 +40,19 @@ export default function HuronPage() {
   const orientationError = errors.find((e) => e.field === 'orientacao');
 
   const handleField = useCallback((id, raw) => {
-    setValues((prev) => ({ ...prev, [id]: raw }));
+    dispatch({ type: 'FIELD_EDIT', id, raw });
   }, []);
 
   const handleCalculate = useCallback(() => {
-    setSubmitted(true);
-    if (!validation.valid) {
-      setResult(null);
-      return;
-    }
-    const raw = calculateHuronFlanges({ A: nums.A, B: nums.B, C: nums.C });
-    // Sempre compensa: o anel físico só lê 0–360°, então um teórico negativo
-    // vira seu equivalente (ex.: −45° → 315°) mesmo com desvio zero.
-    const dial = applyRingCalibration(raw, { bRingOffset: ring.b, cRingOffset: ring.c });
-    setResult({ input: nums, raw, bFlange: dial.bFlangeRing, cFlange: dial.cFlangeRing });
-  }, [nums, ring, validation]);
+    dispatch({ type: 'CALCULATE' });
+  }, []);
 
   const handleClear = useCallback(() => {
-    setValues({ A: 0, B: 0, C: 0 });
-    setSubmitted(false);
-    setResult(null);
+    dispatch({ type: 'CLEAR' });
   }, []);
 
   const handleRing = useCallback((id, value) => {
-    setRing((prev) => ({ ...prev, [id]: value }));
+    dispatch({ type: 'RING_CHANGE', id, value });
   }, []);
 
   // Sem inclinação real, a direção da flange superior não é definida
@@ -122,6 +99,7 @@ export default function HuronPage() {
                   <span className={styles.resultValue}>{isFlat ? '—' : `${result.cFlange.toFixed(4)}°`}</span>
                 </div>
               </div>
+              <div className={styles.theoretical}>{formatResultEcho(result.input)}</div>
             </ResultBox>
             {ringActive && (
               <div className={styles.theoretical}>
