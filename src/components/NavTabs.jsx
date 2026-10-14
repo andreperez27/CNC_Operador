@@ -6,6 +6,7 @@ const TABS = [
   { id: 'roscas', label: 'Roscas' },
   { id: 'trigonometria', label: 'Trigon.' },
   { id: 'gcoderapido', label: 'G-Code Rapido' },
+  { id: 'gravador', label: 'Gravador' },
   { id: 'huron', label: 'Cabeçote Huron' },
   { id: 'convites', label: 'Convites', adminOnly: true },
 ];

@@ -20,6 +20,7 @@ Abas montadas no `App.jsx` — somente estas estão ativas:
 | Roscas | Busca em banco de 45 roscas (métricas M1–M64 + finas) + programa `.H` (rosca rígida CYCL DEF 207 ou helicoidal CC/CP), com regra de furo cego |
 | Trigonometria | Solver de triângulo retângulo (10 combinações de entradas) + SVG |
 | G-Code Rápido | Chanfro externo/interno (bolsão) e raio externo/interno (bolsão) em aresta reta: formulário com validação por campo, preview SVG da trajetória real, parâmetros Q e exportação/cópia do `.H` |
+| Gravador de Textos | Texto → programa `.H` Heidenhain de gravação (fonte de traço simples 10 mm embutida, 37 caracteres): abas Dados/Prévia/Programa, preview SVG da mesma geometria, sem ISO na v1 |
 | Cabeçote Huron | Calculadora de ângulos do cabeçote HURON 45 (flanges de 45° a partir de A/B/C) com gate de alcançabilidade e calibração do anel |
 | Convites | Admin-only: geração de links Beta via Edge Function |
 

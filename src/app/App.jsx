@@ -10,6 +10,7 @@ import styles from './App.module.css';
 const RoscasPage = lazyWithReload(() => import('../features/roscas/RoscasPage'));
 const TrigonometriaPage = lazyWithReload(() => import('../features/trigonometria/TrigonometriaPage'));
 const GCodeRapidoPage = lazyWithReload(() => import('../features/gcoderapido/GCodeRapidoPage'));
+const GravadorPage = lazyWithReload(() => import('../features/gravador/GravadorPage'));
 const HuronPage = lazyWithReload(() => import('../features/huron/HuronPage'));
 const HomePage = lazyWithReload(() => import('../features/home/HomePage'));
 const AdminConvitesPage = lazyWithReload(() => import('../features/admin/AdminConvitesPage'));
@@ -19,6 +20,7 @@ const PAGES = {
   roscas: RoscasPage,
   trigonometria: TrigonometriaPage,
   gcoderapido: GCodeRapidoPage,
+  gravador: GravadorPage,
   huron: HuronPage,
   convites: AdminConvitesPage,
 };

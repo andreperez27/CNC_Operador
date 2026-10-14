@@ -163,6 +163,19 @@ function emitHelix(block) {
   return block.comment ? cc + '\n' + cp + '  ; ' + block.comment : cc + '\n' + cp;
 }
 
+/**
+ * In-plane arc (engraving): center definition followed by the circular
+ * move, in the ANDRE.H original style (`CC` before every `C`).
+ * Coords arrive pre-rounded as strings; formatCoords applies the decimal
+ * comma. `cw` → DR- (G2), `ccw` → DR+ (G3).
+ */
+function emitArc(block) {
+  const cc = 'CC ' + formatCoords({ x: block.center.x, y: block.center.y });
+  const dr = block.direction === 'cw' ? 'DR-' : 'DR+';
+  const c = 'C ' + formatCoords({ x: block.end.x, y: block.end.y }) + ' ' + dr + ' F' + block.feed;
+  return block.comment ? cc + '\n' + c + '  ; ' + block.comment : cc + '\n' + c;
+}
+
 function emitComment(block) {
   return block.lines.map(function (line) {
     if (line === '') return ';';
@@ -189,6 +202,7 @@ const EMITTERS = {
   cycleDef: emitCycleDef,
   cycleCall: emitCycleCall,
   helix: emitHelix,
+  arc: emitArc,
   comment: emitComment,
   section: emitSection,
 };

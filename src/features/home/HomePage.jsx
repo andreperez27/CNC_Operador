@@ -49,10 +49,20 @@ function ConviteIcon() {
   );
 }
 
+function GravadorIcon() {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M5 19L12 5l7 14" />
+      <path d="M8 14h8" />
+    </svg>
+  );
+}
+
 const MODULES = [
   { id: 'roscas', title: 'Roscas', sub: 'Tabela métrica + programa .H', Icon: RoscaIcon },
   { id: 'trigonometria', title: 'Trigonometria', sub: 'Triângulo retângulo', Icon: TrianguloIcon },
   { id: 'gcoderapido', title: 'G-Code Rápido', sub: 'Chanfro e raio ext./int.', Icon: GcodeIcon },
+  { id: 'gravador', title: 'Gravador de Textos', sub: 'Texto em .H Heidenhain', Icon: GravadorIcon },
   { id: 'huron', title: 'Cabeçote Huron', sub: 'Flanges de 45°', machine: 'Máquina: Portal Feller', Icon: HuronIcon },
   { id: 'convites', title: 'Convites', sub: 'Gerar e acompanhar Beta', adminOnly: true, Icon: ConviteIcon },
 ];

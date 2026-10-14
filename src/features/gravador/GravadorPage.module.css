@@ -1,0 +1,93 @@
+.header {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.title {
+  font-size: 18px;
+  color: #e6edf3;
+  margin: 0;
+}
+
+.tabs {
+  display: flex;
+  gap: 6px;
+}
+
+.tab {
+  flex: 1;
+  background: #1a1d24;
+  color: #6a8aaa;
+  border: 1px solid #2a3040;
+  padding: 10px 12px;
+  min-height: 44px;
+  border-radius: 4px;
+  cursor: pointer;
+  font-family: inherit;
+  font-size: 14px;
+  transition: all 0.15s;
+}
+
+.tabActive {
+  background: #1e3048;
+  color: #38bdf8;
+  border-color: #38bdf8;
+}
+
+.stats {
+  margin-top: 8px;
+  font-size: 12px;
+  color: #8ab4d0;
+  font-family: 'Share Tech Mono', monospace;
+}
+
+.signRow {
+  display: flex;
+  gap: 6px;
+}
+
+.signRow .fi {
+  flex: 1;
+  min-width: 0;
+}
+
+.collapse {
+  border: 1px solid #21262d;
+  border-radius: 6px;
+  background: #0d1117;
+  margin-top: 10px;
+}
+
+.collapseSummary {
+  list-style: none;
+  cursor: pointer;
+  padding: 10px 12px;
+  min-height: 44px;
+  display: flex;
+  align-items: center;
+  font-size: 13px;
+  font-weight: 600;
+  color: #8ab4d0;
+}
+
+.collapseSummary::-webkit-details-marker {
+  display: none;
+}
+
+.collapseSummary::before {
+  content: '▸';
+  color: #5d7a96;
+  margin-right: 8px;
+}
+
+details[open] > .collapseSummary::before {
+  content: '▾';
+}
+
+.collapseBody {
+  padding: 0 12px 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}

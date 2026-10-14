@@ -96,8 +96,17 @@ export const TYPES = {
    *  sign = rotary sense — must match `direction`); `zStep` is the
    *  incremental Z travel per revolution (negative = descending).
    *  `{ type, center: { x: string, y: string }, angle: number, zStep: number,
-   *      direction: 'cw' | 'ccw', feed: number, comment?: string }` */
+   *      direction: 'cw' | 'ccw', feed: number, comment?: string } */
   HELIX: 'helix',
+
+  /** In-plane circular arc (XY) around a center, for engraving-style paths.
+   *  Control-agnostic: `direction` is 'cw' | 'ccw' viewed from +Z, i.e.
+   *  G2 / DR- when cw, G3 / DR+ when ccw. Any sweep below a full circle
+   *  (full circles must be split beforehand — no start==end). Coords follow
+   *  the RAPID/LINEAR convention (absolute literal numbers as strings).
+   *  `{ type, center: { x: string, y: string }, end: { x: string, y: string },
+   *      direction: 'cw' | 'ccw', feed: number, comment?: string } */
+  ARC: 'arc',
 
   /** Spindle on.
    *  `{ type, speed: number, direction: 'cw' | 'ccw' }` */

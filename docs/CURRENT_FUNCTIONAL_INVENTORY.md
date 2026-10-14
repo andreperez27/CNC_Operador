@@ -51,7 +51,8 @@
 | F37 | **Página "Cabeçote Huron"** | `features/huron/{HuronPage,HuronForm,HuronPreview,ringCalibrationStore}` | A/B/C → flanges de 45° inferior/superior, gate de alcançabilidade com mensagem, calibração do anel (0/90/180/270, `valor teórico` exibido quando ativo), preview, copiar | **A** |
 | F38 | **Portão de acesso Beta (auth)** | `features/auth/{AuthContext,AuthGate,LoginPage,BlockedPage,convites,offlinePolicy,supabaseClient}` + `supabase/` (Edge Functions `convidar`/`resgatar`, migrations `app_users`/`beta_convites`) | sessão Supabase + linha própria em `app_users` decidem (online o banco decide); tolerância offline de 7 dias via concessão local; convite por link (token 256 bits, só hash no banco, uso único); aba Convites só visível p/ admin | **A** |
 | F39 | **Página "Convites" (admin)** | `features/admin/AdminConvitesPage.jsx` + `convitesStatus.js` + Edge Functions `listar-convites`/`revogar-convite` | admin-only (visual + server-side na Edge): gerar, acompanhar (Ativo/Usado/Expirado/Cancelado) e revogar ativos; token só em memória | **B** |
-| F40 | **Página "Início"** | `features/home/HomePage.jsx` | cards de navegação dos 4 módulos de cálculo (Roscas, Trigonometria, G-Code Rápido, Cabeçote Huron) | **A** |
+| F40 | **Página "Início"** | `features/home/HomePage.jsx` | cards de navegação dos módulos (Roscas, Trigonometria, G-Code Rápido, Cabeçote Huron, Convites, Gravador de Textos) | **A** |
+| F41 | **Gravador de Textos CNC** | `core/engraving/` (validateFont, fontRepository, layout, toolpath, emitHeidenhain) + `features/gravador/` (página Dados/Prévia/Programa, preview SVG próprio) + IR `arc` + emissor em `postprocessors/heidenhain.js` | texto → layout absoluto (fonte traço-simples 10mm embutida, 37 glifos) → .H absoluto (CC+C DR±, sem ISO na v1); fixtures em `tests/fixtures` | **A** |
 
 ## 2. Entradas e saídas por funcionalidade principal
 

@@ -1,0 +1,22 @@
+.box {
+  background: #0d1117;
+  border: 1px solid #21262d;
+  border-radius: 6px;
+  padding: 10px;
+}
+
+.svg {
+  width: 100%;
+  height: auto;
+  display: block;
+  background: #0a0e14;
+  border-radius: 4px;
+}
+
+.placeholder {
+  color: #5d7a96;
+  font-size: 12px;
+  font-family: 'Share Tech Mono', monospace;
+  padding: 18px 10px;
+  text-align: center;
+}
