@@ -419,51 +419,6 @@ export default function GravadorPage() {
       {aba === 'ferramenta' && (
         <Card title="Ferramenta">
           <div className="fg">
-            <label className="fl" htmlFor="gv-zsurf">Z da superfície da peça</label>
-            <div className={styles.signRow}>
-              <input id="gv-zsurf" className="fi" type="text" inputMode="decimal" autoComplete="off" value={values.zSurf} onChange={onField('zSurf')} />
-              <button className="btn btn-s" type="button" title="Inverter sinal (+/-)" onClick={() => onToggleSign('zSurf')}>+/−</button>
-            </div>
-          </div>
-          <div className="fg">
-            <label className="fl" htmlFor="gv-depth">Profundidade (mm)</label>
-            <input id="gv-depth" className="fi" type="number" inputMode="decimal" min="0" step="any" value={values.depth} onChange={onField('depth')} />
-          </div>
-          <div className="info">Z de gravação (calculado): {Number.isFinite(zGrav) ? `${trim(zGrav)} mm` : '—'}</div>
-          <div className="fg">
-            <label className="fl" htmlFor="gv-measured">Largura do risco medida (opcional, calibra com a peça)</label>
-            <input id="gv-measured" className="fi" type="number" inputMode="decimal" min="0.01" step="any" value={values.measured} onChange={onField('measured')} />
-          </div>
-          <div className="fg">
-            <label className="fl" htmlFor="gv-plunge">Avanco de mergulho (mm/min, vazio = 25% do corte)</label>
-            <input id="gv-plunge" className="fi" type="number" inputMode="decimal" min="0.01" step="any" value={values.plunge} onChange={onField('plunge')} />
-          </div>
-          <div className="btn-row" role="group" aria-label="Atalho percentual do corte">
-            {[10, 15, 25, 30].map((p) => (
-              <button key={p} className="btn btn-s" type="button" onClick={() => setPlungePct(p)}>
-                {p}% do corte
-              </button>
-            ))}
-          </div>
-          {plungeHint && (
-            <div className="info" role="status">{plungeHint}</div>
-          )}
-          <div className="fg">
-            <label className="fl" htmlFor="gv-approach">Altura de aproximacao (mm, padrao 2 acima da superficie)</label>
-            <input id="gv-approach" className="fi" type="number" inputMode="decimal" min="0.1" step="any" value={values.approach} onChange={onField('approach')} />
-          </div>
-          <div className="info">
-            Mergulho efetivo: {Number.isFinite(effPlunge) ? `${trim(effPlunge)} mm${plungeAuto ? ' (automatico 25%)' : ''}` : '-'}
-            {' - '}Aproximacao efetiva: {Number.isFinite(effApproach) ? `Z ${trim(effApproach)}${approachAuto ? ' (automatica)' : ''}` : '-'}
-          </div>
-          <div className="fg">
-            <label className="fl" htmlFor="gv-zseg">Z de segurança</label>
-            <div className={styles.signRow}>
-              <input id="gv-zseg" className="fi" type="text" inputMode="decimal" autoComplete="off" value={values.zSeg} onChange={onField('zSeg')} />
-              <button className="btn btn-s" type="button" title="Inverter sinal (+/-)" onClick={() => onToggleSign('zSeg')}>+/−</button>
-            </div>
-          </div>
-          <div className="fg">
             <label className="fl" htmlFor="gv-toolkind">Tipo de ferramenta</label>
             <select id="gv-toolkind" className="fi" value={values.toolKind} onChange={onField('toolKind')}>
               <option value="flat">Fresa de topo</option>
@@ -512,6 +467,55 @@ export default function GravadorPage() {
           <div className="fg">
             <label className="fl" htmlFor="gv-maxdiam">Diâmetro máximo (opcional; no V o padrão é a haste 3,175)</label>
             <input id="gv-maxdiam" className="fi" type="number" inputMode="decimal" min="0.01" step="any" value={values.maxDiam} onChange={onField('maxDiam')} />
+          </div>
+          <div className="fg">
+            <label className="fl" htmlFor="gv-zsurf">Z da superfície da peça</label>
+            <div className={styles.signRow}>
+              <input id="gv-zsurf" className="fi" type="text" inputMode="decimal" autoComplete="off" value={values.zSurf} onChange={onField('zSurf')} />
+              <button className="btn btn-s" type="button" title="Inverter sinal (+/-)" onClick={() => onToggleSign('zSurf')}>+/−</button>
+            </div>
+          </div>
+          <div className="fg">
+            <label className="fl" htmlFor="gv-depth">Profundidade (mm)</label>
+            <input id="gv-depth" className="fi" type="number" inputMode="decimal" min="0" step="any" value={values.depth} onChange={onField('depth')} />
+          </div>
+          <div className="fg">
+            <label className="fl" htmlFor="gv-feed">Avanço (mm/min)</label>
+            <input id="gv-feed" className="fi" type="number" inputMode="decimal" min="1" step="any" value={values.feed} onChange={onField('feed')} />
+          </div>
+          <div className="info">Z de gravação (calculado): {Number.isFinite(zGrav) ? `${trim(zGrav)} mm` : '—'}</div>
+          <div className="fg">
+            <label className="fl" htmlFor="gv-measured">Largura do risco medida (opcional, calibra com a peça)</label>
+            <input id="gv-measured" className="fi" type="number" inputMode="decimal" min="0.01" step="any" value={values.measured} onChange={onField('measured')} />
+          </div>
+          <div className="fg">
+            <label className="fl" htmlFor="gv-plunge">Avanco de mergulho (mm/min, vazio = 25% do corte)</label>
+            <input id="gv-plunge" className="fi" type="number" inputMode="decimal" min="0.01" step="any" value={values.plunge} onChange={onField('plunge')} />
+          </div>
+          <div className="btn-row" role="group" aria-label="Atalho percentual do corte">
+            {[10, 15, 25, 30].map((p) => (
+              <button key={p} className="btn btn-s" type="button" onClick={() => setPlungePct(p)}>
+                {p}% do corte
+              </button>
+            ))}
+          </div>
+          {plungeHint && (
+            <div className="info" role="status">{plungeHint}</div>
+          )}
+          <div className="fg">
+            <label className="fl" htmlFor="gv-approach">Altura de aproximacao (mm, padrao 2 acima da superficie)</label>
+            <input id="gv-approach" className="fi" type="number" inputMode="decimal" min="0.1" step="any" value={values.approach} onChange={onField('approach')} />
+          </div>
+          <div className="info">
+            Mergulho efetivo: {Number.isFinite(effPlunge) ? `${trim(effPlunge)} mm${plungeAuto ? ' (automatico 25%)' : ''}` : '-'}
+            {' - '}Aproximacao efetiva: {Number.isFinite(effApproach) ? `Z ${trim(effApproach)}${approachAuto ? ' (automatica)' : ''}` : '-'}
+          </div>
+          <div className="fg">
+            <label className="fl" htmlFor="gv-zseg">Z de segurança</label>
+            <div className={styles.signRow}>
+              <input id="gv-zseg" className="fi" type="text" inputMode="decimal" autoComplete="off" value={values.zSeg} onChange={onField('zSeg')} />
+              <button className="btn btn-s" type="button" title="Inverter sinal (+/-)" onClick={() => onToggleSign('zSeg')}>+/−</button>
+            </div>
           </div>
           {!toolInfo.ok && (
             <div className="info" role="alert" style={{ color: 'var(--red)' }}>{toolInfo.error}</div>
@@ -649,12 +653,8 @@ export default function GravadorPage() {
                 <label className="fl" htmlFor="gv-zstart">Z início/fim</label>
                 <input id="gv-zstart" className="fi" type="number" inputMode="decimal" step="any" value={values.zStart} onChange={onField('zStart')} />
               </div>
-              <div className="fg">
-                <label className="fl" htmlFor="gv-feed">Avanço (mm/min)</label>
-                <input id="gv-feed" className="fi" type="number" inputMode="decimal" min="1" step="any" value={values.feed} onChange={onField('feed')} />
-              </div>
-              <div className="fg">
-                <label className="fl" htmlFor="gv-rpm">Rotação do fuso (RPM)</label>
+                <div className="fg">
+                  <label className="fl" htmlFor="gv-rpm">Rotação do fuso (RPM)</label>
                 <input id="gv-rpm" className="fi" type="number" inputMode="decimal" min="1" step="1" value={values.rpm} onChange={onField('rpm')} />
               </div>
               <div className="fg">
