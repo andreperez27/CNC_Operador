@@ -14,7 +14,7 @@
  *    (same name, from programName.js, matching the saved file name)
  *  - decimal values use comma as decimal separator (",")
  *  - safe return block ends the program (M30, which also stops the
- *    spindle and cancels active cycles — M5 is redundant)
+ *    spindle and cancels active cycles - M5 is redundant)
  *
  * The math engine keeps using "." (JavaScript) internally; conversion
  * happens only here, at final text formatting time.
@@ -45,7 +45,7 @@ function emitDefine(block) {
 }
 
 /**
- * Literal user input — same data as DEFINE, but emitted in the
+ * Literal user input - same data as DEFINE, but emitted in the
  * "FN 0: Qn =+valor ;comentario" form used by the real programs
  * for values typed by the operator.
  */
@@ -56,7 +56,7 @@ function emitFn0(block) {
 }
 
 /**
- * Stock envelope — two lines (0.1 = negative corner, 0.2 = origin),
+ * Stock envelope - two lines (0.1 = negative corner, 0.2 = origin),
  * each one gets its own block number.
  */
 function fmtStock(value) {
@@ -167,7 +167,7 @@ function emitHelix(block) {
  * In-plane arc (engraving): center definition followed by the circular
  * move, in the ANDRE.H original style (`CC` before every `C`).
  * Coords arrive pre-rounded as strings; formatCoords applies the decimal
- * comma. `cw` → DR- (G2), `ccw` → DR+ (G3).
+ * comma. `cw` -> DR- (G2), `ccw` -> DR+ (G3).
  */
 function emitArc(block) {
   const cc = 'CC ' + formatCoords({ x: block.center.x, y: block.center.y });

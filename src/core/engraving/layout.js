@@ -1,32 +1,32 @@
 /**
- * Motor geométrico do Gravador de Textos CNC (puro, sem React).
+ * Motor geometrico do Gravador de Textos CNC (puro, sem React).
  *
- * `layoutText` posiciona os traços da fonte em coordenadas absolutas
- * (máquina, mm, Y para cima, origem do texto em (x0, y0)).
+ * `layoutText` posiciona os tracos da fonte em coordenadas absolutas
+ * (maquina, mm, Y para cima, origem do texto em (x0, y0)).
  *
- * Três medidas horizontais (não confundir):
- *  - largura geométrica: o que o desenho ocupa (bbox);
- *  - avanço do caractere: origem→origem, já com o espaço natural dentro;
+ * Tres medidas horizontais (nao confundir):
+ *  - largura geometrica: o que o desenho ocupa (bbox);
+ *  - avanco do caractere: origem->origem, ja com o espaco natural dentro;
  *    ESCALA junto com a altura;
- *  - espaçamento extra: ajuste do operador, somado ao avanço, em mm reais
- *    SEM escala (o valor digitado é o que se mede na peça).
+ *  - espacamento extra: ajuste do operador, somado ao avanco, em mm reais
+ *    SEM escala (o valor digitado e o que se mede na peca).
  */
 import { ValidationError } from '../validation/validationEngine';
 
-const DIACRITICS = /[̀-ͯ]/g;
+const DIACRITICS = /[\u0300-\u036f]/g;
 
 function normalizeChar(raw) {
   const stripped = raw.normalize('NFD').replace(DIACRITICS, '');
   return { stripped, upper: stripped.toUpperCase() };
 }
 
-// Ângulo varrido (graus, 0–360) e flags SVG de um arco, a partir do ponto
-// inicial e do segmento. `cw: true` = horário visto de +Z. Como a prévia
-// inverte o Y (tela Y-para-baixo, ponto (x,−y)), o sentido espelha: na tela,
-// horário-na-máquina percorre ângulo CRESCENTE — logo cw:true → sweep-flag
-// 1, cw:false → sweep-flag 0 (o inverso do que a intuição sugere; provado
-// pelo teste de regressão do ponto médio). `large-arc` segue só do ângulo
-// varrido (arcos acima de 180° existem: 2, 3, S).
+// Angulo varrido (graus, 0-360) e flags SVG de um arco, a partir do ponto
+// inicial e do segmento. `cw: true` = horario visto de +Z. Como a previa
+// inverte o Y (tela Y-para-baixo, ponto (x,-y)), o sentido espelha: na tela,
+// horario-na-maquina percorre angulo CRESCENTE - logo cw:true -> sweep-flag
+// 1, cw:false -> sweep-flag 0 (o inverso do que a intuicao sugere; provado
+// pelo teste de regressao do ponto medio). `large-arc` segue so do angulo
+// varrido (arcos acima de 180graus existem: 2, 3, S).
 export function describeArc(from, seg) {
   const r = Math.hypot(from[0] - seg.c[0], from[1] - seg.c[1]);
   const a0 = Math.atan2(from[1] - seg.c[1], from[0] - seg.c[0]);
@@ -42,7 +42,7 @@ export function describeArc(from, seg) {
   };
 }
 
-// Comprimento total de corte dos traços (retas + arcos), em mm.
+// Comprimento total de corte dos tracos (retas + arcos), em mm.
 export function measureCutLength(strokes) {
   let total = 0;
   for (const st of strokes) {
@@ -85,11 +85,11 @@ const fmtNum = (v) => String(Number(v.toFixed(3)));
  *   x0=0, y0=0, availableWidth?, availableHeight? }
  * @returns {{ strokes, warnings, bounds, lines, stats }}
  *   strokes: [{ from:[x,y], segs:[{t,to[,c,cw]}] }] absolutos, em ordem,
- *   sem otimização de percurso; warnings: string[]; bounds:
+ *   sem otimizacao de percurso; warnings: string[]; bounds:
  *   {minX,minY,maxX,maxY,width,height}; lines: [{index,text,y}];
  *   stats: {chars, cutLength}.
- * @throws {ValidationError} INVALID_HEIGHT (altura ≤ 0) ou INVALID_TEXT
- *   (sem geometria gravável).
+ * @throws {ValidationError} INVALID_HEIGHT (altura ? 0) ou INVALID_TEXT
+ *   (sem geometria gravavel).
  */
 export function layoutText(text, font, params = {}) {
   const {
@@ -140,10 +140,10 @@ export function layoutText(text, font, params = {}) {
     let glyphOrd = -1;
     for (const rawCh of rawLine) {
       charIdx += 1;
-      // Busca do glifo: (a) caractere exato; (b) maiúscula (minúscula sem
-      // glifo próprio, com aviso); (c) remoção de acento, só se não houver
-      // glifo para o caractere acentuado. Nada é descartado ou
-      // normalizado antes da busca: os símbolos (- _ . / + = # ( ) &)
+      // Busca do glifo: (a) caractere exato; (b) maiuscula (minuscula sem
+      // glifo proprio, com aviso); (c) remocao de acento, so se nao houver
+      // glifo para o caractere acentuado. Nada e descartado ou
+      // normalizado antes da busca: os simbolos (- _ . / + = # ( ) &)
       // caem no caso (a).
       let glyph = glyphs.get(rawCh);
       let key = rawCh;
@@ -177,8 +177,8 @@ export function layoutText(text, font, params = {}) {
         if (firstInk < 0) firstInk = charIdx;
         lastInk = charIdx;
       }
-      // gi = ordinal do glifo com tinta na linha: agrupa os traços de cada
-      // ocorrência para a análise de legibilidade (intra vs entre).
+      // gi = ordinal do glifo com tinta na linha: agrupa os tracos de cada
+      // ocorrencia para a analise de legibilidade (intra vs entre).
       let gi = -1;
       if (glyph.strokes.length > 0) {
         glyphOrd += 1;
@@ -219,20 +219,20 @@ export function layoutText(text, font, params = {}) {
   });
 
   if (strokes.length === 0) {
-    throw new ValidationError('INVALID_TEXT', 'text', 'Texto sem caracteres graváveis.');
+    throw new ValidationError('INVALID_TEXT', 'text', 'Texto sem caracteres grav\u00e1veis.');
   }
 
   if (accents.length > 0) {
-    warnings.push(`Acentos removidos: ${accents.map((a) => `${a.from}→${a.to}`).join(', ')}`);
+    warnings.push(`Acentos removidos: ${accents.map((a) => `${a.from}\u2192${a.to}`).join(', ')}`);
   }
   if (lowered.length > 0) {
-    warnings.push(`Minúsculas sem glifo próprio: ${lowered.map((l) => `${l.from}→${l.to}`).join(', ')}`);
+    warnings.push(`Min\u00fasculas sem glifo pr\u00f3prio: ${lowered.map((l) => `${l.from}\u2192${l.to}`).join(', ')}`);
   }
   if (ignored.length > 0) {
     warnings.push(`Ignorados sem glifo: ${ignored.join(', ')}`);
   }
   if (provisional) {
-    warnings.push('Zero provisório em uso (desenho do O)');
+    warnings.push('Zero provis\u00f3rio em uso (desenho do O)');
   }
 
   const bounds = {
@@ -241,10 +241,10 @@ export function layoutText(text, font, params = {}) {
     height: maxY - minY,
   };
   if (availableWidth !== null && availableWidth !== undefined && bounds.width > availableWidth) {
-    warnings.push(`Texto excede a área disponível: largura ${fmtNum(bounds.width)} mm > ${fmtNum(availableWidth)} mm`);
+    warnings.push(`Texto excede a \u00e1rea dispon\u00edvel: largura ${fmtNum(bounds.width)} mm > ${fmtNum(availableWidth)} mm`);
   }
   if (availableHeight !== null && availableHeight !== undefined && bounds.height > availableHeight) {
-    warnings.push(`Texto excede a área disponível: altura ${fmtNum(bounds.height)} mm > ${fmtNum(availableHeight)} mm`);
+    warnings.push(`Texto excede a \u00e1rea dispon\u00edvel: altura ${fmtNum(bounds.height)} mm > ${fmtNum(availableHeight)} mm`);
   }
 
   return { strokes, warnings, bounds, lines, stats: { chars: cutChars, cutLength: measureCutLength(strokes) } };

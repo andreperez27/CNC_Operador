@@ -1,10 +1,10 @@
 /**
- * Validação dos dados de uma fonte de gravação (pura, sem I/O).
+ * Validacao dos dados de uma fonte de gravacao (pura, sem I/O).
  *
- * Usada nos testes e — no futuro — antes de aceitar qualquer fonte vinda
+ * Usada nos testes e - no futuro - antes de aceitar qualquer fonte vinda
  * do banco (`supabaseFontRepository`): se falhar, o app continua com a
- * última versão válida. Uma versão publicada é imutável; corrigir uma
- * letra gera uma nova versão.
+ * ultima versao valida. Uma versao publicada e imutavel; corrigir uma
+ * letra gera uma nova versao.
  *
  * @param {object} font objeto `{ font: {...}, glyphs: [...] }`
  * @returns {{ valid: boolean, errors: string[] }}
@@ -16,22 +16,22 @@ const isPt = (p) =>
 
 function checkArc(charLabel, from, seg, errors) {
   if (!isPt(seg.to) || !isPt(seg.c) || typeof seg.cw !== 'boolean') {
-    errors.push(`${charLabel}: arco com to/c/cw inválidos.`);
+    errors.push(`${charLabel}: arco com to/c/cw inv\u00e1lidos.`);
     return;
   }
   const r0 = Math.hypot(from[0] - seg.c[0], from[1] - seg.c[1]);
   const r1 = Math.hypot(seg.to[0] - seg.c[0], seg.to[1] - seg.c[1]);
   if (Math.abs(r0 - r1) > ARC_TOL) {
-    errors.push(`${charLabel}: raio de início (${r0}) difere do de fim (${r1}).`);
+    errors.push(`${charLabel}: raio de in\u00edcio (${r0}) difere do de fim (${r1}).`);
   }
   if (Math.hypot(from[0] - seg.to[0], from[1] - seg.to[1]) < 1e-9) {
-    errors.push(`${charLabel}: arco com início igual ao fim (círculo completo deve ser dividido).`);
+    errors.push(`${charLabel}: arco com in\u00edcio igual ao fim (c\u00edrculo completo deve ser dividido).`);
   }
 }
 
 function checkStroke(charLabel, st, bbox, errors) {
   if (!st || !isPt(st.from) || !Array.isArray(st.segs)) {
-    errors.push(`${charLabel}: traço sem from/segs válidos.`);
+    errors.push(`${charLabel}: tra\u00e7o sem from/segs v\u00e1lidos.`);
     return;
   }
   const [xmin, ymin, xmax, ymax] = bbox;
@@ -40,11 +40,11 @@ function checkStroke(charLabel, st, bbox, errors) {
   if (!inside(cur)) errors.push(`${charLabel}: ponto fora do bbox: [${cur}].`);
   for (const s of st.segs) {
     if (!s || (s.t !== 'L' && s.t !== 'A')) {
-      errors.push(`${charLabel}: segmento com tipo inválido.`);
+      errors.push(`${charLabel}: segmento com tipo inv\u00e1lido.`);
       return;
     }
     if (!isPt(s.to)) {
-      errors.push(`${charLabel}: segmento sem destino válido.`);
+      errors.push(`${charLabel}: segmento sem destino v\u00e1lido.`);
       return;
     }
     if (!inside(s.to)) errors.push(`${charLabel}: ponto fora do bbox: [${s.to}].`);
@@ -77,19 +77,19 @@ export function validateFont(font) {
   }
   const ref = font.font.height_ref;
   if (!(typeof ref === 'number' && Number.isFinite(ref) && ref > 0)) {
-    errors.push('height_ref deve ser número positivo.');
+    errors.push('height_ref deve ser n\u00famero positivo.');
   }
   const seen = new Set();
   for (const g of font.glyphs) {
     const label = `glifo '${g?.char ?? '?'}'`;
     if (typeof g?.char !== 'string' || g.char.length !== 1) {
-      errors.push(`${label}: char inválido (1 caractere).`);
+      errors.push(`${label}: char inv\u00e1lido (1 caractere).`);
       continue;
     }
     if (seen.has(g.char)) errors.push(`caractere duplicado: '${g.char}'.`);
     seen.add(g.char);
     if (!(typeof g.advance === 'number' && Number.isFinite(g.advance) && g.advance > 0)) {
-      errors.push(`'${g.char}': advance deve ser número maior que zero.`);
+      errors.push(`'${g.char}': advance deve ser n\u00famero maior que zero.`);
     }
     const bb = g.bbox;
     if (!Array.isArray(bb) || bb.length !== 4 || !bb.every(Number.isFinite)) {

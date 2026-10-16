@@ -1,20 +1,20 @@
 /**
- * Legibilidade da gravação (pura, sem React): com profundidade constante, a
- * região cortada é o traço central engrossado pela largura do risco.
+ * Legibilidade da gravacao (pura, sem React): com profundidade constante, a
+ * regiao cortada e o traco central engrossado pela largura do risco.
  *
- * Método: distância mínima entre linhas centrais (a) dentro do mesmo
- * caractere, entre segmentos quaisquer (junções exatas dão distância 0 e
- * caem na tolerância abaixo), e (b) entre caracteres vizinhos da mesma
+ * Metodo: distancia minima entre linhas centrais (a) dentro do mesmo
+ * caractere, entre segmentos quaisquer (juncoes exatas dao distancia 0 e
+ * caem na tolerancia abaixo), e (b) entre caracteres vizinhos da mesma
  * linha (ordinais de tinta consecutivos), medida na geometria real.
- * Folga livre = distância − largura do risco.
+ * Folga livre = distancia - largura do risco.
  *
- * Junções e cruzamentos intencionais (vértice e barra do A, R, 4, Q)
- * tocam-se exatamente → distância 0 → ignorados pela tolerância de
- * 0,05 mm (que também absorve o erro de amostragem dos arcos). O, B e D
- * preservam o vazio interno pela própria geometria (sem casos especiais).
- * Cruzamentos são testados por interseção EXATA (segmento-segmento,
- * reta-círculo, círculo-círculo), não só por amostragem; distâncias em
- * arcos usam polilinha densificada (passo ≤ 5°) com rejeição por caixas.
+ * Juncoes e cruzamentos intencionais (vertice e barra do A, R, 4, Q)
+ * tocam-se exatamente -> distancia 0 -> ignorados pela tolerancia de
+ * 0,05 mm (que tambem absorve o erro de amostragem dos arcos). O, B e D
+ * preservam o vazio interno pela propria geometria (sem casos especiais).
+ * Cruzamentos sao testados por intersecao EXATA (segmento-segmento,
+ * reta-circulo, circulo-circulo), nao so por amostragem; distancias em
+ * arcos usam polilinha densificada (passo ? 5graus) com rejeicao por caixas.
  */
 import { ValidationError } from '../validation/validationEngine';
 import { layoutText } from './layout';
@@ -35,7 +35,7 @@ function cross(a, b) {
   return a[0] * b[1] - a[1] * b[0];
 }
 
-// Distância ponto→segmento (com ponto mais próximo).
+// Distancia ponto->segmento (com ponto mais proximo).
 function ptSeg(p, a, b) {
   const ab = sub(b, a);
   const len2 = dot(ab, ab);
@@ -45,7 +45,7 @@ function ptSeg(p, a, b) {
   return { dist: Math.hypot(p[0] - c[0], p[1] - c[1]), closest: c };
 }
 
-// Segmento×segmento exato (com interseção, inclusive colinear sobreposta).
+// Segmentoxsegmento exato (com intersecao, inclusive colinear sobreposta).
 function segSeg(p1, p2, p3, p4) {
   const r = sub(p2, p1);
   const s = sub(p4, p3);
@@ -59,7 +59,7 @@ function segSeg(p1, p2, p3, p4) {
       return { dist: 0, touches: true, mid: hit };
     }
   } else if (Math.abs(cross(sub(p3, p1), r)) <= EPS) {
-    // Colineares: sobreposição de projeções?
+    // Colineares: sobreposicao de projecoes?
     const len2 = dot(r, r);
     if (len2 > 0) {
       const t0 = dot(sub(p3, p1), r) / len2;
@@ -83,7 +83,7 @@ function segSeg(p1, p2, p3, p4) {
   return { dist: best.dist, touches: false, mid: best.mid };
 }
 
-// Ângulo dentro da varredura do arco (origem a0, direção por cw)?
+// Angulo dentro da varredura do arco (origem a0, direcao por cw)?
 function arcCovers(a0, sweep, cw, theta) {
   const twoPi = 2 * Math.PI;
   let rel = cw ? a0 - theta : theta - a0;
@@ -91,7 +91,7 @@ function arcCovers(a0, sweep, cw, theta) {
   return rel <= sweep + 1e-9;
 }
 
-// Interseção exata reta( p1p2 )×círculo(c, r): pontos dentro do segmento.
+// Intersecao exata reta( p1p2 )xcirculo(c, r): pontos dentro do segmento.
 function lineCircleHits(p1, p2, c, r) {
   const d = sub(p2, p1);
   const f = sub(p1, c);
@@ -107,7 +107,7 @@ function lineCircleHits(p1, p2, c, r) {
     .map((t) => [p1[0] + d[0] * t, p1[1] + d[1] * t]);
 }
 
-// Interseção exata círculo×círculo.
+// Intersecao exata circuloxcirculo.
 function circleCircleHits(c0, r0, c1, r1) {
   const d = Math.hypot(c1[0] - c0[0], c1[1] - c0[1]);
   if (d > r0 + r1 + EPS || d < Math.abs(r0 - r1) - EPS || d <= EPS) return [];
@@ -155,7 +155,7 @@ function crossesExact(s1, p1from, s2, p2from) {
   );
 }
 
-// Densifica arco em subsegmentos (passo ≤ 5°) + bbox; com memo por objeto.
+// Densifica arco em subsegmentos (passo ? 5graus) + bbox; com memo por objeto.
 const ARC_STEP_CAP = 5;
 
 function densify(seg, from, cache) {
@@ -198,7 +198,7 @@ function bboxGap(a, b) {
   return Math.hypot(dx, dy);
 }
 
-// Menor distância entre dois segmentos originais (com cruzamento exato).
+// Menor distancia entre dois segmentos originais (com cruzamento exato).
 function pairDistance(e1, e2, cache) {
   const { seg: s1, from: f1 } = e1;
   const { seg: s2, from: f2 } = e2;
@@ -225,33 +225,33 @@ function pairBBox(e, cache) {
 }
 
 /**
- * @param {object} layout saída de layoutText
- * @param {number} largura largura do risco (mm) — deve ser finita > 0
+ * @param {object} layout saida de layoutText
+ * @param {number} largura largura do risco (mm) - deve ser finita > 0
  * @param {object} opts { minClearanceFactor = 0.5 }
  * @returns {{ nivel: 'verde'|'amarelo'|'vermelho', folgaMinima,
  *   pior: null|{ caracteres, tipo, posicao }, alertas: [],
  *   dentro: null|{ distancia, folga, pior }, entre: null|{...} }}
  *   alerta = { tipo: 'dentro'|'entre', caracteres, folga, causa, sugestao,
  *   posicao: {x, y} }.
- *   dentro/entre trazem o mínimo de cada tipo (null sem pares do tipo) e
+ *   dentro/entre trazem o minimo de cada tipo (null sem pares do tipo) e
  *   o pior alerta do tipo (null sem alerta); o global segue mandando no
- *   diagnóstico. Ponto '.': dentro sempre aceito (ponto cheio — um risco
- *   que preencha o círculo não é erro nem alerta); com vizinhos vale como
- *   traço comum. Folga infinita nunca vira pior ponto (pior só nasce de
+ *   diagnostico. Ponto '.': dentro sempre aceito (ponto cheio - um risco
+ *   que preencha o circulo nao e erro nem alerta); com vizinhos vale como
+ *   traco comum. Folga infinita nunca vira pior ponto (pior so nasce de
  *   alerta real).
  */
 export function analyzeLegibility(layout, largura, opts = {}) {
   if (!(typeof largura === 'number' && Number.isFinite(largura) && largura > 0)) {
-    throw new ValidationError('INVALID_GROOVE', 'risco', 'Largura do risco deve ser número maior que zero.');
+    throw new ValidationError('INVALID_GROOVE', 'risco', 'Largura do risco deve ser n\u00famero maior que zero.');
   }
   const factor = opts.minClearanceFactor ?? 0.5;
   if (!(typeof factor === 'number' && Number.isFinite(factor) && factor >= 0)) {
-    throw new ValidationError('INVALID_CLEARANCE', 'folga', 'Fator de folga mínima deve ser número maior ou igual a zero.');
+    throw new ValidationError('INVALID_CLEARANCE', 'folga', 'Fator de folga m\u00ednima deve ser n\u00famero maior ou igual a zero.');
   }
   const minClear = factor * largura;
   const cache = new Map();
 
-  // Agrupa traços por caractere (linha, gi).
+  // Agrupa tracos por caractere (linha, gi).
   const groups = new Map();
   for (const st of layout.strokes) {
     const key = `${st.line}:${st.gi}`;
@@ -266,9 +266,9 @@ export function analyzeLegibility(layout, largura, opts = {}) {
   const ordered = [...groups.values()].sort((a, b) => a.line - b.line || 0);
 
   // Pares: (a) dentro do caractere; (b) entre vizinhos da mesma linha.
-  // Duas podas independentes: alertas exigem avaliação de todo par que
-  // possa violar (gap < largura + mínima); a folga mínima global usa
-  // branch-and-bound (pula par cujo gap já supera o melhor achado).
+  // Duas podas independentes: alertas exigem avaliacao de todo par que
+  // possa violar (gap < largura + minima); a folga minima global usa
+  // branch-and-bound (pula par cujo gap ja supera o melhor achado).
   const limit = largura + minClear;
   const alertas = [];
   let bestDist = Infinity;
@@ -278,9 +278,9 @@ export function analyzeLegibility(layout, largura, opts = {}) {
 
   const consider = (tipo, caracteres, e1, e2) => {
     const gap = bboxGap(pairBBox(e1, cache), pairBBox(e2, cache));
-    // Poda segura para os DOIS mínimos: a distância real é ≥ gap, então o
-    // par só é inútil quando não melhora nem o global nem o do tipo (um par
-    // que não melhora o global ainda pode ser o melhor do tipo). Pares com
+    // Poda segura para os DOIS minimos: a distancia real e ? gap, entao o
+    // par so e inutil quando nao melhora nem o global nem o do tipo (um par
+    // que nao melhora o global ainda pode ser o melhor do tipo). Pares com
     // gap < limit sempre avaliam (podem alertar).
     if (gap >= limit && gap >= bestDist && gap >= bestTipo[tipo].dist) return;
     const { dist, mid } = pairDistance(e1, e2, cache);
@@ -298,8 +298,8 @@ export function analyzeLegibility(layout, largura, opts = {}) {
         folga,
         causa: `linhas centrais a ${trim(dist)} mm com risco ${trim(largura)} mm (folga ${trim(folga)} mm)`,
         sugestao: tipo === 'dentro'
-          ? 'Aumentar o espaçamento não resolve: use altura maior ou ferramenta mais fina.'
-          : 'Aumente o espaçamento extra entre letras.',
+          ? 'Aumentar o espa\u00e7amento n\u00e3o resolve: use altura maior ou ferramenta mais fina.'
+          : 'Aumente o espa\u00e7amento extra entre letras.',
         posicao: { x: mid[0], y: mid[1] },
       };
       alertas.push(alerta);
@@ -308,7 +308,7 @@ export function analyzeLegibility(layout, largura, opts = {}) {
   };
 
   for (const g of ordered) {
-    // Ponto cheio: dentro do '.' qualquer risco é aceito, sem erro nem
+    // Ponto cheio: dentro do '.' qualquer risco e aceito, sem erro nem
     // alerta (o par das duas metades divide os extremos e seria aparente).
     if (g.ch === '.') continue;
     for (let i = 0; i < g.segs.length; i++) {
@@ -354,7 +354,7 @@ export function analyzeLegibility(layout, largura, opts = {}) {
   return { nivel, folgaMinima, pior: piorOut, alertas, dentro: pack('dentro'), entre: pack('entre') };
 }
 
-// Texto único do pior ponto para tela e cabeçalho (fonte única: nunca
+// Texto unico do pior ponto para tela e cabecalho (fonte unica: nunca
 // "undefined"). "dentro do K"; "entre R e I". Null sem pior ponto.
 export function describeWorst(pior) {
   if (!pior || typeof pior.caracteres !== 'string' || typeof pior.tipo !== 'string') return null;
@@ -378,17 +378,17 @@ export function viableRange(minLegHeight, maxHeight) {
 }
 
 /**
- * Altura mínima legível por bisseção (a folga cresce com a altura para
- * espaçamento extra ≥ 0 e tinta dentro de [0, advance] — ver teste de
- * precondição da fonte). Arredondada PARA CIMA a 0,1 mm.
+ * Altura minima legivel por bissecao (a folga cresce com a altura para
+ * espacamento extra ? 0 e tinta dentro de [0, advance] - ver teste de
+ * precondicao da fonte). Arredondada PARA CIMA a 0,1 mm.
  * @returns {{ legible: boolean, height: number|null }}
  */
 export function minLegibleHeight({ text, font, letterSpacing = 0, lineHeightFactor = 1.6, grooveWidth, minClearanceFactor = 0.5 }) {
   if (!(typeof grooveWidth === 'number' && Number.isFinite(grooveWidth) && grooveWidth > 0)) {
-    throw new ValidationError('INVALID_GROOVE', 'risco', 'Largura do risco deve ser número maior que zero.');
+    throw new ValidationError('INVALID_GROOVE', 'risco', 'Largura do risco deve ser n\u00famero maior que zero.');
   }
   if (letterSpacing < 0) {
-    throw new ValidationError('INVALID_SPACING', 'espacamento', 'Espaçamento extra negativo inviabiliza a busca (use ≥ 0).');
+    throw new ValidationError('INVALID_SPACING', 'espacamento', 'Espa\u00e7amento extra negativo inviabiliza a busca (use \u2265 0).');
   }
   const green = (h) =>
     analyzeLegibility(
@@ -404,9 +404,9 @@ export function minLegibleHeight({ text, font, letterSpacing = 0, lineHeightFact
     if (green(mid)) hi = mid;
     else lo = mid;
   }
-  // Menor décimo verde (a bisseção deixa hi logo acima do limiar; quando o
-  // limiar cai num múltiplo exato de 0,1, o ceil puro devolveria +0,1
-  // desnecessário — ex.: ABE limita em 5,0 mas retornava 5,1).
+  // Menor decimo verde (a bissecao deixa hi logo acima do limiar; quando o
+  // limiar cai num multiplo exato de 0,1, o ceil puro devolveria +0,1
+  // desnecessario - ex.: ABE limita em 5,0 mas retornava 5,1).
   let tenths = Math.ceil(hi * 10 - 1e-9);
   for (let guard = 0; guard < 600 && tenths > 1; guard++) {
     if (!green((tenths - 1) / 10)) break;
@@ -415,7 +415,7 @@ export function minLegibleHeight({ text, font, letterSpacing = 0, lineHeightFact
   return { legible: true, height: tenths / 10 };
 }
 
-// Exportação exige confirmação explícita só no vermelho.
+// Exportacao exige confirmacao explicita so no vermelho.
 export function canExport(nivel, acked) {
   if (nivel !== 'vermelho') return true;
   return acked === true;

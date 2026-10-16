@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { layoutText } from '../src/core/engraving/layout';
-import { fitInBlock, anchorInBlock } from '../src/core/engraving/fit';
+import { fitInBlock, anchorInBlock, formatExcess } from '../src/core/engraving/fit';
 import { blockOutlines, svgPathForLoop } from '../src/features/gravador/components/engravingPaths';
 import fontData from '../src/core/engraving/fonts/traco-simples-10.v1.json';
 
@@ -154,5 +154,14 @@ describe('blockOutlines — retângulo do bloco e área útil', () => {
     expect(usable).toEqual([[11, 6], [59, 6], [59, 14], [11, 14], [11, 6]]);
     // path com Y negado (mapeamento da tela, igual aos traços)
     expect(svgPathForLoop(block)).toBe('M 10,-5 L 60,-5 L 60,-15 L 10,-15 L 10,-5');
+  });
+});
+
+describe('formatExcess - virgula decimal como o corpo do .H', () => {
+  it('excesso com virgula, 3 casas, sem ponto decimal', () => {
+    const s = formatExcess({ fits: false, overW: 6.94942, overH: 0.44941 });
+    expect(s).toBe('passa 6,949 mm na largura e passa 0,449 mm na altura');
+    expect(/\d\.\d/.test(s)).toBe(false);
+    expect(formatExcess({ fits: true, overW: 0, overH: 0 })).toBe('');
   });
 });

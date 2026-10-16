@@ -1,12 +1,12 @@
 /**
  * Emissor Heidenhain .H do Gravador de Textos CNC (formato principal; ISO
- * fora da v1 por decisão — sem emissor ISO nem opção na tela).
+ * fora da v1 por decisao - sem emissor ISO nem opcao na tela).
  *
  * Monta o programa a partir dos blocos IR (`toolpath.js`) e delega o texto
  * ao postprocessor existente (`core/postprocessors/heidenhain.js`):
  * abertura `TOOL CALL` + `L Z+100 R0 FMAX M3`, fim `L Z+100 R0 FMAX M30`,
- * arcos como `CC` + `C DR∓`. Somente coordenadas absolutas na v1
- * (incremental adiado: exigiria semântica de laço/offset no programa).
+ * arcos como `CC` + `C DR?`. Somente coordenadas absolutas na v1
+ * (incremental adiado: exigiria semantica de laco/offset no programa).
  */
 import { TYPES, createBlock } from '../program/types';
 import { postprocess } from '../postprocessors/heidenhain';
@@ -16,16 +16,16 @@ import { formatExcess } from './fit';
 import { describeWorst } from './legibility';
 
 /**
- * ASCII p/ comentário de máquina antiga: NFD tira os acentos (ç→c, é→e),
- * grau vira "graus", travessões viram "-"; a rede final troca qualquer
- * resto não-ASCII por "?" para nada passar batido.
+ * ASCII p/ comentario de maquina antiga: NFD tira os acentos (c vira c,
+ * e vira e), grau vira "graus", travessao vira "-"; a rede final troca
+ * qualquer resto nao-ASCII por "?" para nada passar batido.
  */
 export function toAscii(s) {
   const mapped = String(s)
     .normalize('NFD')
     .replace(/[\u0300-\u036f]/g, '')
-    .replace(/°/g, 'graus')
-    .replace(/[—–]/g, '-');
+    .replace(/\u00b0/g, 'graus')
+    .replace(/[\u2014\u2013]/g, '-');
   let out = '';
   for (const ch of mapped) {
     out += ch.codePointAt(0) <= 0x7f ? ch : '?';
@@ -38,15 +38,15 @@ export function toAscii(s) {
  *   name}), programName?, tooling?, block? ({ w, h, margin, fits, overW,
  *   overH }) }
  *   tooling? ({ description, depth?, zSurf?, width?, measured?, folga?,
- *   nivel?, pior? }): linhas de ferramenta e diagnóstico no cabeçalho.
- *   Com bloco: registra sempre as dimensões; se não couber, acrescenta o
- *   aviso de excesso (o programa NÃO é bloqueado).
+ *   nivel?, pior? }): linhas de ferramenta e diagnostico no cabecalho.
+ *   Com bloco: registra sempre as dimensoes; se nao couber, acrescenta o
+ *   aviso de excesso (o programa NAO e bloqueado).
  * @returns {string} texto .H completo (com BEGIN/END PGM numerados).
  */
 export function buildEngravingProgram({ layout, machining = {}, fontMeta = null, programName = null, tooling = null, block = null }) {
   const { blocks, machining: m } = buildToolpath(layout, machining);
   const meta = fontMeta || { slug: '?', version: '?', name: '?' };
-  // Números do cabeçalho: no máximo 3 casas, vírgula decimal (igual ao corpo).
+  // Numeros do cabecalho: no maximo 3 casas, virgula decimal (igual ao corpo).
   const hnum = (v) => String(Number(v.toFixed(3))).replace('.', ',');
 
   const headLines = [
@@ -57,6 +57,8 @@ export function buildEngravingProgram({ layout, machining = {}, fontMeta = null,
   ];
   if (tooling) {
     headLines.push(`Ferramenta: ${tooling.description}`);
+    const pct = Math.round((m.plungeFeed / m.feed) * 1000) / 10;
+    headLines.push(`Avanco: corte ${m.feed} mm/min + mergulho ${m.plungeFeed} mm/min (${pct}%)`);
     if (tooling.depth !== undefined && tooling.depth !== null) {
       headLines.push(`Profundidade: ${hnum(tooling.depth)} mm (Z superficie ${hnum(tooling.zSurf ?? 0)})`);
     }
@@ -68,7 +70,7 @@ export function buildEngravingProgram({ layout, machining = {}, fontMeta = null,
     if (tooling.nivel) {
       const folgaTxt = Number.isFinite(tooling.folga) ? `${hnum(tooling.folga)} mm` : 'sem pares';
       const worst = describeWorst(tooling.pior);
-      headLines.push(`Diagnostico: ${String(tooling.nivel).toUpperCase()} — folga minima ${folgaTxt}${worst ? ` (pior ponto: ${worst})` : ''}`);
+      headLines.push(`Diagnostico: ${String(tooling.nivel).toUpperCase()} \u2014 folga minima ${folgaTxt}${worst ? ` (pior ponto: ${worst})` : ''}`);
     }
     headLines.push('');
   }
@@ -76,7 +78,7 @@ export function buildEngravingProgram({ layout, machining = {}, fontMeta = null,
     headLines.push(`Bloco: ${hnum(block.w)}x${hnum(block.h)} mm (margem ${hnum(block.margin)} mm)`);
     const excess = formatExcess(block);
     if (!block.fits) {
-      headLines.push(`AVISO: texto não cabe no bloco${excess ? ' — ' + excess : ''}`);
+      headLines.push(`AVISO: texto n\u00e3o cabe no bloco${excess ? ' \u2014 ' + excess : ''}`);
     }
     headLines.push('');
   }

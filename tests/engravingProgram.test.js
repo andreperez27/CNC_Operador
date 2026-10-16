@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { layoutText } from '../src/core/engraving/layout';
-import { buildToolpath, round3 } from '../src/core/engraving/toolpath';
+import { buildToolpath, round3, plungeWarning } from '../src/core/engraving/toolpath';
 import { buildEngravingProgram } from '../src/core/engraving/emitHeidenhain';
 import { postprocess } from '../src/core/postprocessors/heidenhain';
 import fontData from '../src/core/engraving/fonts/traco-simples-10.v1.json';
@@ -30,15 +30,18 @@ describe('round3 — 3 casas, nunca -0', () => {
 });
 
 describe('buildToolpath — sequência por traço + padrões', () => {
-  it('I: XY no alto, depois Z segurança, descida, corte, subida; defaults', () => {
+  it('I: XY no alto, Z seguranca, aproximacao, mergulho, corte, subida; defaults (corte 500)', () => {
     const { blocks, machining } = buildToolpath(lay('I'), {});
-    expect(machining).toMatchObject({ zGravacao: 0, zSeguranca: 10, feed: 2000, rpm: 1000, ferramenta: 2, zInicio: 100 });
+    expect(machining).toMatchObject({ zGravacao: 0, zSeguranca: 10, feed: 500, rpm: 1000, ferramenta: 2, zInicio: 100, plungeFeed: 125, approach: 2 });
     const kinds = blocks.map((b) => b.type);
-    expect(kinds).toEqual(['rapid', 'rapid', 'linear', 'linear', 'rapid']);
+    expect(kinds).toEqual(['rapid', 'rapid', 'rapid', 'linear', 'linear', 'rapid']);
     expect(blocks[0].coords).toEqual({ x: '0.000', y: '0.000' });
     expect(blocks[1].coords).toEqual({ z: '10.000' });
-    expect(blocks[2]).toMatchObject({ type: 'linear', feed: 2000 });
-    expect(blocks[2].coords.z).toBe('0.000');
+    expect(blocks[2]).toMatchObject({ type: 'rapid', coords: { z: '2.000' } });
+    expect(blocks[3]).toMatchObject({ type: 'linear', feed: 125 });
+    expect(blocks[3].coords.z).toBe('0.000');
+    expect(blocks[4]).toMatchObject({ type: 'linear', feed: 500 });
+    expect(blocks[5]).toMatchObject({ type: 'rapid', coords: { z: '10.000' } });
   });
 
   it('arco vira bloco arc com centro/fim/sentido', () => {
@@ -46,12 +49,77 @@ describe('buildToolpath — sequência por traço + padrões', () => {
     const arc = blocks.find((b) => b.type === 'arc');
     expect(arc).toBeTruthy();
     expect(arc.direction).toBe('ccw');
-    expect(arc.feed).toBe(2000);
+    expect(arc.feed).toBe(500);
   });
 
   it('usinagem inválida lança', () => {
-    expect(() => buildToolpath(lay('I'), { feed: 0 })).toThrowError(/Avanço/);
-    expect(() => buildToolpath(lay('I'), { rpm: -1 })).toThrowError(/Rotação/);
+    expect(() => buildToolpath(lay('I'), { feed: 0 })).toThrowError(/Avanco/);
+    expect(() => buildToolpath(lay('I'), { rpm: -1 })).toThrowError(/Rotacao/);
+  });
+});
+
+describe('buildToolpath - mergulho so nas descidas + aproximacao', () => {
+  const M = { feed: 2000, plungeFeed: 500, approach: 2 };
+
+  it('sequencia por traco: XY, Zseg, aproximacao FMAX, mergulho, corte, subida', () => {
+    const { blocks, machining, warnings, plunge } = buildToolpath(lay('I'), M);
+    expect(plunge).toBe(true);
+    expect(warnings).toEqual([]);
+    expect(blocks.map((b) => b.type)).toEqual(['rapid', 'rapid', 'rapid', 'linear', 'linear', 'rapid']);
+    expect(blocks[2]).toMatchObject({ type: 'rapid', coords: { z: '2.000' } });
+    expect(blocks[3]).toMatchObject({ type: 'linear', coords: { z: '0.000' }, feed: 500 });
+    expect(blocks[4]).toMatchObject({ type: 'linear', feed: 2000 });
+    expect(machining).toMatchObject({ plungeFeed: 500, approach: 2 });
+  });
+
+  it('arcos cortam no avanco de corte; descida no de mergulho', () => {
+    const { blocks } = buildToolpath(lay('C'), M);
+    const arc = blocks.find((b) => b.type === 'arc');
+    expect(arc.feed).toBe(2000);
+    const descents = blocks.filter((b) => b.type === 'linear' && b.coords.x === undefined);
+    expect(descents).toHaveLength(1);
+    expect(descents[0].feed).toBe(500);
+  });
+
+  it('approach vazio vira zGravacao + 2; sem os dois vira padrao com mergulho', () => {
+    const a = buildToolpath(lay('I'), { plungeFeed: 500 });
+    expect(a.blocks[2]).toMatchObject({ type: 'rapid', coords: { z: '2.000' } });
+    const d = buildToolpath(lay('I'), {});
+    expect(d.plunge).toBe(true);
+    expect(d.blocks.map((b) => b.type)).toEqual(['rapid', 'rapid', 'rapid', 'linear', 'linear', 'rapid']);
+    expect(d.machining.plungeFeed).toBe(125);
+    expect(d.machining.approach).toBe(2);
+  });
+
+  it('validacoes explicam o motivo', () => {
+    expect(() => buildToolpath(lay('I'), { ...M, plungeFeed: 0 })).toThrowError(/maior que zero/);
+    expect(() => buildToolpath(lay('I'), { ...M, plungeFeed: 3000 })).toThrowError(/nao pode passar/);
+    expect(() => buildToolpath(lay('I'), { ...M, plungeFeed: NaN })).toThrowError(/numero valido/);
+    expect(() => buildToolpath(lay('I'), { ...M, approach: 0.05 })).toThrowError(/minimo/);
+    expect(() => buildToolpath(lay('I'), { ...M, approach: 10 })).toThrowError(/menor que o Z/);
+    expect(() => buildToolpath(lay('I'), { ...M, approach: NaN })).toThrowError(/numero valido/);
+  });
+
+  it('acima de 50% do corte avisa sem bloquear', () => {
+    expect(plungeWarning(2000, 1200)).toMatch(/50%/);
+    expect(plungeWarning(2000, 1000)).toBeNull();
+    expect(plungeWarning(2000, 500)).toBeNull();
+    expect(plungeWarning(2000, NaN)).toBeNull();
+    const r = buildToolpath(lay('I'), { ...M, plungeFeed: 1200 });
+    expect(r.warnings).toHaveLength(1);
+    expect(r.blocks.find((b) => b.type === 'linear' && b.coords.x === undefined).feed).toBe(1200);
+  });
+});
+
+describe('cabecalho com avancos (corte + mergulho)', () => {
+  it('linha de Avanco sempre (sequencia unica com mergulho)', () => {
+    const tooling = { description: 'V 60graus ponta 0,1 mm' };
+    const withPlunge = buildEngravingProgram({
+      layout: lay('I'), machining: { feed: 2000, plungeFeed: 500, approach: 2 }, fontMeta: META, tooling,
+    });
+    expect(withPlunge).toContain('Avanco: corte 2000 mm/min + mergulho 500 mm/min (25%)');
+    const defaults = buildEngravingProgram({ layout: lay('I'), machining: {}, fontMeta: META, tooling });
+    expect(defaults).toContain('Avanco: corte 500 mm/min + mergulho 125 mm/min (25%)');
   });
 });
 
@@ -167,7 +235,7 @@ describe('ida e volta Heidenhain absoluto (teste 3, sem ISO na v1)', () => {
       expect(p[0]).toBeCloseTo(arcCenters[i][0], 2);
       expect(p[1]).toBeCloseTo(arcCenters[i][1], 2);
     });
-    expect(new Set(rec.drifts)).toEqual(new Set([100, 10, 0]));
+    expect(new Set(rec.drifts)).toEqual(new Set([100, 10, 2, 0]));
   });
 });
 

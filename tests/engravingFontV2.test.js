@@ -119,12 +119,12 @@ describe('toAscii — cabeçalho só ASCII', () => {
 
   it('programa inteiro ASCII em várias combinações (ferramenta/texto/diagnóstico)', () => {
     const combos = [
-      [{ type: 'flat', diameter: 0.5 }, 0.2, 'A', 10, null],
-      [{ type: 'ball', diameter: 1 }, 0.2, 'Q', 5, { w: 50, h: 10 }],
-      [{ type: 'vee', angle: 60, tipDiameter: 0.1 }, 0.2, 'ANDRE HENRIQUE', 10, { w: 200, h: 25 }],
-      [{ type: 'vee', angle: 90, radius: 0.5 }, 0.3, 'A-B_C.D/E+F=G#H&I(J)K', 5, null],
+      [{ type: 'flat', diameter: 0.5 }, 0.2, 'A', 10, null, null],
+      [{ type: 'ball', diameter: 1 }, 0.2, 'Q', 5, { w: 50, h: 10 }, null],
+      [{ type: 'vee', angle: 60, tipDiameter: 0.1 }, 0.2, 'ANDRE HENRIQUE', 10, { w: 200, h: 25 }, { plungeFeed: 300, approach: 2 }],
+      [{ type: 'vee', angle: 90, radius: 0.5 }, 0.3, 'A-B_C.D/E+F=G#H&I(J)K', 5, null, null],
     ];
-    for (const [tool, depth, text, height, blockDims] of combos) {
+    for (const [tool, depth, text, height, blockDims, machining] of combos) {
       const w = grooveWidth(tool, depth);
       const layout = lay2(text, { height });
       const a = analyzeLegibility(layout, w);
@@ -137,7 +137,7 @@ describe('toAscii — cabeçalho só ASCII', () => {
         })()
         : null;
       const prog = buildEngravingProgram({
-        layout, machining: {}, fontMeta: META2,
+        layout, machining: machining || {}, fontMeta: META2,
         tooling: {
           description: describeTool(tool), depth, zSurf: 0, width: w, measured: false,
           folga: a.folgaMinima, nivel: a.nivel, pior: a.pior,

@@ -24,13 +24,13 @@ export function buildProgramName(operationId, date) {
 }
 
 // Nome do .H do Gravador a partir do texto: 5 primeiros [a-z0-9] da
-// primeira linha (minúsculas, sem acento) + _MMAA. Ex.: "ANDRE HENRIQUE"
-// em out/2026 → "andre_1026". Sem letras/números válidos → "gravacao".
+// primeira linha (minusculas, sem acento) + _MMAA. Ex.: "ANDRE HENRIQUE"
+// em out/2026 -> "andre_1026". Sem letras/numeros validos -> "gravacao".
 export function buildEngravingFileName(text, date) {
   const line = String(text ?? '').split('\n')[0] ?? '';
   const slug = line
     .normalize('NFD')
-    .replace(/[̀-ͯ]/g, '')
+    .replace(/[\u0300-\u036f]/g, '')
     .toLowerCase()
     .replace(/[^a-z0-9]/g, '')
     .slice(0, 5) || 'gravacao';
@@ -41,12 +41,12 @@ export function buildEngravingFileName(text, date) {
 }
 
 // Higieniza o nome ajustado pelo operador (mesmas regras + "_" permitido,
-// teto 16 para controles antigos). Vazio/inválido → '' (a tela volta ao
-// automático).
+// teto 16 para controles antigos). Vazio/invalido -> '' (a tela volta ao
+// automatico).
 export function sanitizeProgramName(name) {
   return String(name ?? '')
     .normalize('NFD')
-    .replace(/[̀-ͯ]/g, '')
+    .replace(/[\u0300-\u036f]/g, '')
     .toLowerCase()
     .replace(/[^a-z0-9_]/g, '')
     .slice(0, 16);
