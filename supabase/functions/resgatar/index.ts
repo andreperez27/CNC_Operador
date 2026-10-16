@@ -6,7 +6,7 @@
 // Secrets: SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY (nunca no frontend).
 
 import { serviceClient, getCallerUid, json, handleOptions } from '../_shared/auth.ts';
-import { decidirResgate } from './decision.ts';
+import { decidirResgate, decidirConsumo } from './decision.ts';
 
 async function sha256hex(text: string): Promise<string> {
   const digest = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(text));
@@ -35,6 +35,7 @@ Deno.serve(async (req) => {
   if (!token) return json({ error: 'Convite inválido ou expirado.' }, 410, origin);
 
   const svc = serviceClient();
+  const nowIso = new Date().toISOString();
 
   // Consulta prévia pelo uid: sem ela, o upsert com ignoreDuplicates
   // queimava o convite de um beta JÁ existente sem atualizar nada.
@@ -52,22 +53,47 @@ Deno.serve(async (req) => {
     return json({ ok: true, note: 'already-admin' }, 200, origin);
   }
 
-  // Consumo ATÔMICO em uma única instrução: sob concorrência, exatamente
-  // um resgate vence. Não é necessária função SQL transacional privada.
-  const { data: invite, error: consumeError } = await svc
+  // Localiza o convite (sem consumir ainda) e decide o uso: primeiro uso
+  // marca usado (auditoria da origem); reentrada com link válido só
+  // vincula a sessão atual, sem tocar na linha.
+  const { data: found, error: readError } = await svc
     .from('beta_convites')
-    .update({ usado_em: new Date().toISOString(), usado_por: uid, status: 'usado' })
+    .select('id,status,expiracao_beta,expira_em,usado_em')
     .eq('token_hash', await sha256hex(token))
-    .eq('status', 'ativo')
-    .is('usado_em', null)
-    .gte('expira_em', new Date().toISOString())
-    .select('id,expiracao_beta')
     .maybeSingle();
-
-  // Mensagem única de propósito: não distingue inexistente/expirado/
-  // usado/cancelado (anti-enumeração de convites).
-  if (consumeError || !invite) {
+  if (readError) return json({ error: 'Não foi possível ativar o acesso.' }, 500, origin);
+  if (decidirConsumo(found ?? null, nowIso).kind === 'reject') {
+    // Mensagem única de propósito: não distingue inexistente/expirado/
+    // cancelado (anti-enumeração de convites).
     return json({ error: 'Convite inválido ou expirado.' }, 410, origin);
+  }
+
+  let invite = found;
+  if (decidirConsumo(found, nowIso).kind === 'consume') {
+    // Consumo ATÔMICO em uma única instrução: sob concorrência, exatamente
+    // um primeiro uso vence. Quem perde a corrida cai para reentrada
+    // (link válido, sessão legítima) em vez de 410.
+    const { data: consumed, error: consumeError } = await svc
+      .from('beta_convites')
+      .update({ usado_em: nowIso, usado_por: uid, status: 'usado' })
+      .eq('id', found.id)
+      .eq('status', 'ativo')
+      .select('id,expiracao_beta')
+      .maybeSingle();
+    if (consumeError) return json({ error: 'Não foi possível ativar o acesso.' }, 500, origin);
+    if (consumed) {
+      invite = consumed;
+    } else {
+      const { data: again } = await svc
+        .from('beta_convites')
+        .select('id,status,expiracao_beta,expira_em,usado_em')
+        .eq('id', found.id)
+        .maybeSingle();
+      if (decidirConsumo(again ?? null, nowIso).kind !== 'reenter') {
+        return json({ error: 'Convite inválido ou expirado.' }, 410, origin);
+      }
+      invite = again;
+    }
   }
 
   // Vincula o uid conforme a decisão pura (decision.ts): beta existente

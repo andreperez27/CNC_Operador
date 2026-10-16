@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { decidirEdicao, podeExcluir, isValidDate } from '../supabase/functions/_shared/convitesAdmin';
+import { decidirEdicao, podeExcluir, podeReemitir, isValidDate } from '../supabase/functions/_shared/convitesAdmin';
 
 /**
  * Regras puras de edição/exclusão de convites (painel admin).
@@ -39,6 +39,27 @@ describe('podeExcluir — usado preserva auditoria', () => {
     const r = podeExcluir(null);
     expect(r.ok).toBe(false);
     if (!r.ok) expect(r.code).toBe(404);
+  });
+});
+
+describe('podeReemitir — só ativo gera link novo', () => {
+  it('ativo pode', () => {
+    expect(podeReemitir(ATIVO)).toEqual({ ok: true });
+  });
+
+  it('usado bloqueia orientando a gerar outro', () => {
+    const r = podeReemitir(USADO);
+    expect(r.ok).toBe(false);
+    if (!r.ok) {
+      expect(r.code).toBe(409);
+      expect(r.message).toMatch(/gere um novo/);
+    }
+  });
+
+  it('cancelado/expirado bloqueiam; inexistente dá 404', () => {
+    expect(podeReemitir(CANCELADO)).toMatchObject({ ok: false, code: 409 });
+    expect(podeReemitir({ ...ATIVO, status: 'expirado' })).toMatchObject({ ok: false, code: 409 });
+    expect(podeReemitir(null)).toMatchObject({ ok: false, code: 404 });
   });
 });
 

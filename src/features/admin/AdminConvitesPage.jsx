@@ -36,6 +36,8 @@ export default function AdminConvitesPage() {
   const [editando, setEditando] = useState(null);
   const [salvando, setSalvando] = useState(false);
   const [excluindoId, setExcluindoId] = useState(null);
+  const [novoLink, setNovoLink] = useState(null);
+  const [reemitindo, setReemitindo] = useState(false);
 
   const carregarLista = useCallback(async () => {
     if (profile?.tipo !== 'admin' || !supabase) return;
@@ -129,6 +131,7 @@ export default function AdminConvitesPage() {
 
   const handleEditar = (c) => {
     setErroLista(null);
+    setNovoLink(null);
     setEditando({
       id: c.id,
       nome: c.apelido || 'sem apelido',
@@ -163,11 +166,40 @@ export default function AdminConvitesPage() {
         return;
       }
       setEditando(null);
+      setNovoLink(null);
       await carregarLista();
     } catch {
       setErroLista('Sem conexão com o serviço de convites.');
     } finally {
       setSalvando(false);
+    }
+  };
+
+  // Reemissão dentro da edição (só ativo): o link atual não pode ser
+  // exibido (só o hash é guardado), então gera-se um novo — o antigo
+  // morre na hora e o novo aparece uma única vez para copiar/reenviar.
+  const handleReemitir = async () => {
+    if (!editando || reemitindo) return;
+    if (typeof window !== 'undefined'
+      && !window.confirm(`Gerar novo link para "${editando.nome}"? O link atual deixará de funcionar.`)) {
+      return;
+    }
+    setReemitindo(true);
+    try {
+      const { data, error: fnError } = await supabase.functions.invoke('reemitir-convite', {
+        body: { id: editando.id },
+      });
+      if (fnError || !data?.ok) {
+        setErroLista(data?.error || 'Não foi possível reemitir o convite.');
+        return;
+      }
+      // Token existe só aqui, em memória, até FECHAR. Nunca persistido.
+      setNovoLink({ link: data.link, expira_em: data.expira_em });
+      await carregarLista();
+    } catch {
+      setErroLista('Sem conexão com o serviço de convites.');
+    } finally {
+      setReemitindo(false);
     }
   };
 
@@ -322,11 +354,35 @@ export default function AdminConvitesPage() {
             {editando.situacao !== 'ativo' && editando.situacao !== 'usado' && (
               <div className="info">Convite encerrado: só o apelido pode ser alterado.</div>
             )}
+            {editando.situacao === 'ativo' && !novoLink && (
+              <>
+                <div className="info">O link atual não pode ser exibido (só o hash é guardado).</div>
+                <div className="btn-row">
+                  <button className="btn btn-s" type="button" onClick={handleReemitir} disabled={reemitindo || salvando}>
+                    {reemitindo ? 'REEMITINDO...' : 'REEMITIR NOVO LINK'}
+                  </button>
+                </div>
+              </>
+            )}
+            {novoLink && (
+              <>
+                <div className="info">Novo link (mostrado uma única vez)</div>
+                <div className="fg">
+                  <label className="fl">Válido até</label>
+                  <div className="fi">{fmtDateTime(novoLink.expira_em)}</div>
+                </div>
+                <div className="fg">
+                  <label className="fl">Link para copiar e reenviar</label>
+                  <div className="fi" style={{ wordBreak: 'break-all' }}>{novoLink.link}</div>
+                </div>
+                <CopyButton getText={() => novoLink.link} label="COPIAR LINK" />
+              </>
+            )}
             <div className="btn-row">
               <button className="btn btn-p" type="submit" disabled={salvando}>
                 {salvando ? 'SALVANDO...' : 'SALVAR'}
               </button>
-              <button className="btn btn-s" type="button" onClick={() => setEditando(null)} disabled={salvando}>
+              <button className="btn btn-s" type="button" onClick={() => { setEditando(null); setNovoLink(null); }} disabled={salvando}>
                 CANCELAR
               </button>
             </div>

@@ -119,3 +119,21 @@ export function podeExcluir(invite: ConviteRow | null | undefined): DecisaoExclu
   }
   return { ok: true };
 }
+
+export type DecisaoReemissao =
+  | { ok: true }
+  | { ok: false; code: 404 | 409; message: string };
+
+// Reemitir = trocar o token (link atual morre, novo link vale). Só faz
+// sentido em convite ainda ativo: usado está consumido e encerrado não
+// ressuscita por aqui (datas continuam editáveis à parte).
+export function podeReemitir(invite: ConviteRow | null | undefined): DecisaoReemissao {
+  if (!invite) return { ok: false, code: 404, message: 'Convite não encontrado.' };
+  if (invite.status === 'usado') {
+    return { ok: false, code: 409, message: 'Convite já utilizado: gere um novo para reenviar.' };
+  }
+  if (invite.status !== 'ativo') {
+    return { ok: false, code: 409, message: 'Convite encerrado: gere um novo para reenviar.' };
+  }
+  return { ok: true };
+}

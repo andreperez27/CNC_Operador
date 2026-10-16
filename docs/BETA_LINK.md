@@ -13,8 +13,10 @@ Fluxo: admin gera link → testador abre → sessão anônima → resgate →
 - `supabase/functions/convidar/` — gera token 256 bits, grava só o SHA-256,
   somente admin (checagem server-side). Deploy manual:
   `supabase functions deploy convidar`.
-- `supabase/functions/resgatar/` — consumo atômico + vínculo do uid
-  (sem rebaixar admin). Deploy manual: `supabase functions deploy resgatar`.
+- `supabase/functions/resgatar/` — primeiro uso marca o convite
+  (auditoria da origem) + vínculo do uid (sem rebaixar admin);
+  reaberturas com link válido vinculam a sessão atual sem tocar na
+  linha (reentrada). Deploy manual: `supabase functions deploy resgatar`.
 - `supabase/functions/listar-convites/` — lista convites p/ o painel
   admin (só metadados, nunca o hash). Deploy manual:
   `supabase functions deploy listar-convites`.
@@ -32,6 +34,11 @@ Fluxo: admin gera link → testador abre → sessão anônima → resgate →
   anti-corrida). **Excluir nunca remove acesso** (vínculo mora em
   `app_users`). Deploy manual:
   `supabase functions deploy excluir-convite`.
+- `supabase/functions/reemitir-convite/` — gera link novo p/ convite
+  ATIVO (troca o hash; link antigo morre na hora; aparece uma única
+  vez). O link original jamais pode ser reexibido (só o hash é
+  guardado). Usado/encerrado: 409. Deploy manual:
+  `supabase functions deploy reemitir-convite`.
 - `supabase/functions/_shared/auth.ts` — JWT, admin-check, CORS, JSON.
 - `src/features/auth/convites.js` — lê `#convite=` (ou `?convite=`),
   anonimiza, resgata, limpa a URL. Token só em memória.
@@ -64,19 +71,28 @@ das funções `listar-convites` e `revogar-convite` para funcionar.
 → `{ link, expira_em }` → copiar e enviar. Validade do convite default 7
 dias (teto 30); validade do Beta = `expiracao_beta` do convite.
 
-## Resgate por uid já existente (sem queimar convite)
+## Resgate e reentrada (mesmo link vale depois de sair)
 
-- **Admin abre um link válido:** o convite NÃO é consumido; resposta
-  `{ ok: true, note: 'already-admin' }` (a linha admin segue intacta).
+- **Primeiro uso:** marca `usado_em`/`usado_por`/`status` (auditoria da
+  origem, preservada para sempre) e vincula o uid.
+- **Reabrir o link (deslogado, outra sessão):** se ainda válido
+  (`expira_em` futuro, não cancelado), vincula a sessão atual sem tocar
+  na linha — cada entrada cria/estende sua própria linha beta. A vida
+  útil do link é a `expira_em`; a do acesso, a `expiracao_beta` vigente
+  a cada entrada.
+- **Admin abre um link válido:** o convite NÃO é consumido nem tocado;
+  resposta `{ ok: true, note: 'already-admin' }` (a linha segue intacta).
   Convite inválido/expirado continua `410` com mensagem única.
-- **Beta existente abre um novo link:** o convite é consumido e
-  `data_expiracao` vai para a MAIS DISTANTE entre a atual e a
-  `expiracao_beta` do convite (nunca encurta), com `ativo: true`.
+- **Beta existente abre um (novo ou mesmo) link:** `data_expiracao` vai
+  para a MAIS DISTANTE entre a atual e a `expiracao_beta` do convite
+  (nunca encurta), com `ativo: true`.
 - **Uid novo:** insert como antes.
-- A escolha vive em `supabase/functions/resgatar/decision.ts` (função
-  pura `decidirResgate`, coberta por `tests/betaResgateDecision.test.js`);
-  a Edge Function só executa o efeito. Uso único, atomicidade e
-  anti-enumeração mantidos.
+- A escolha vive em `supabase/functions/resgatar/decision.ts`
+  (`decidirResgate` p/ vínculo, `decidirConsumo` p/ uso — consumir,
+  reentrar ou rejeitar — cobertas por
+  `tests/betaResgateDecision.test.js`); a Edge Function só executa o
+  efeito. Consumo atômico no 1º uso (corrida cai p/ reentrada, nunca
+  410 indevido) e anti-enumeração mantidos.
 
 ## Convite aberto COM sessão já ativa (correção 2026-09-29)
 
@@ -110,7 +126,8 @@ admin sem mudar o acesso (a linha vira "Usado" e nada acontece). Publicar
 
 ## Segurança (resumo)
 
-Token nunca persistido nem logado; hash + uso único transacional +
-expiração; mensagem única de falha; admin verificado server-side;
-service-role só no Edge; CORS com allowlist; sem e-mail em lugar nenhum.
+Token nunca persistido nem logado; hash + marcação atômica no 1º uso +
+expiração (`expira_em` limita a reutilização no tempo); mensagem única
+de falha; admin verificado server-side; service-role só no Edge; CORS
+com allowlist; sem e-mail em lugar nenhum.
 Detalhe completo no relatório BETA-LINK FASE 1A.

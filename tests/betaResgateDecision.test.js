@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { decidirResgate } from '../supabase/functions/resgatar/decision.ts';
+import { decidirResgate, decidirConsumo } from '../supabase/functions/resgatar/decision.ts';
 
 /**
  * Lógica de decisão do resgate Beta (a Edge Function em si não roda em
@@ -51,5 +51,50 @@ describe('decidirResgate — resgate de convite Beta', () => {
       kind: 'insert-beta',
       data_expiracao: '2026-12-31T00:00:00.000Z',
     });
+  });
+});
+
+describe('decidirConsumo — mesmo link vale reentrada (uso único acabou)', () => {
+  const NOW = '2026-10-15T00:00:00.000Z';
+  const FUTURE = '2026-12-31T00:00:00.000Z';
+  const PAST = '2026-09-01T00:00:00.000Z';
+
+  it('ativo dentro da validade: consome (primeiro uso marca auditoria)', () => {
+    expect(
+      decidirConsumo({ status: 'ativo', expira_em: FUTURE, usado_em: null }, NOW),
+    ).toEqual({ kind: 'consume' });
+  });
+
+  it('usado dentro da validade: reentra sem tocar na linha', () => {
+    expect(
+      decidirConsumo({ status: 'usado', expira_em: FUTURE, usado_em: '2026-10-14T00:00:00.000Z' }, NOW),
+    ).toEqual({ kind: 'reenter' });
+  });
+
+  it('usado com validade vencida: rejeita (vida útil do link acabou)', () => {
+    expect(
+      decidirConsumo({ status: 'usado', expira_em: PAST, usado_em: PAST }, NOW),
+    ).toEqual({ kind: 'reject' });
+  });
+
+  it('ativo com validade vencida: rejeita', () => {
+    expect(
+      decidirConsumo({ status: 'ativo', expira_em: PAST, usado_em: null }, NOW),
+    ).toEqual({ kind: 'reject' });
+  });
+
+  it('cancelado/expirado rejeitam; inexistente/sem expira rejeitam', () => {
+    expect(decidirConsumo({ status: 'cancelado', expira_em: FUTURE, usado_em: null }, NOW))
+      .toEqual({ kind: 'reject' });
+    expect(decidirConsumo({ status: 'expirado', expira_em: FUTURE, usado_em: null }, NOW))
+      .toEqual({ kind: 'reject' });
+    expect(decidirConsumo(null, NOW)).toEqual({ kind: 'reject' });
+    expect(decidirConsumo({ status: 'ativo', usado_em: null }, NOW)).toEqual({ kind: 'reject' });
+  });
+
+  it('ativo com usado_em anômalo: reentra (não consome de novo)', () => {
+    expect(
+      decidirConsumo({ status: 'ativo', expira_em: FUTURE, usado_em: FUTURE }, NOW),
+    ).toEqual({ kind: 'reenter' });
   });
 });

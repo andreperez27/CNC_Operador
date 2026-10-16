@@ -37,3 +37,35 @@ export function decidirResgate(
   }
   return { kind: 'insert-beta', data_expiracao: expiracaoConvite };
 }
+
+// Decisão de USO do convite (um link vale reentradas, não só o 1º uso):
+//
+//   - `consume`: primeiro uso — marca usado_em/usado_por/status (auditoria
+//     da origem, preservada para sempre).
+//   - `reenter`: convite já usado (e ainda dentro da validade): NÃO toca
+//     na linha, só vincula a sessão atual (nova linha beta ou extensão).
+//   - `reject`: inexistente, expirado (mesmo que usado) ou encerrado —
+//     a função responde o 410 genérico, sem distinguir (anti-enumeração).
+//
+// A validade do LINK (expira_em) limita a reutilização no tempo; a validade
+// do BETA (expiracao_beta) vai para a linha vinculada a cada entrada.
+export type ConviteParaUso = {
+  status: string;
+  expira_em: string;
+  usado_em: string | null;
+};
+
+export type DecisaoConsumo =
+  | { kind: 'consume' }
+  | { kind: 'reenter' }
+  | { kind: 'reject' };
+
+export function decidirConsumo(
+  invite: ConviteParaUso | null | undefined,
+  nowIso: string,
+): DecisaoConsumo {
+  if (!invite || !invite.expira_em || invite.expira_em < nowIso) return { kind: 'reject' };
+  if (invite.status === 'usado' || invite.usado_em) return { kind: 'reenter' };
+  if (invite.status === 'ativo') return { kind: 'consume' };
+  return { kind: 'reject' };
+}

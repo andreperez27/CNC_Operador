@@ -24,6 +24,40 @@ export function getInviteTokenFromUrl() {
   }
 }
 
+// Extrai o token de um texto colado pelo testador: link completo com
+// `#convite=` ou `?convite=`, ou o token opaco puro (base64url, como o
+// gerado em `convidar`). Texto de chat costuma trazer aspas, ponto final
+// ou espaços grudados — as bordas são limpas e o miolo precisa ser só
+// base64url, senão o hash não bate (410) por sujeira, não por link ruim.
+// Devolve null se não houver token aproveitável. Pura e testável.
+function cleanToken(t) {
+  const s = String(t ?? '')
+    .trim()
+    .replace(/^[^A-Za-z0-9\-_]+|[^A-Za-z0-9\-_]+$/g, '');
+  return /^[A-Za-z0-9\-_]+$/.test(s) ? s : null;
+}
+
+export function extractInviteToken(text) {
+  if (text === null || text === undefined) return null;
+  const s = String(text).trim();
+  if (!s) return null;
+  const hash = s.match(/[#&]convite=([^&]+)/);
+  if (hash) {
+    try {
+      return cleanToken(decodeURIComponent(hash[1]));
+    } catch {
+      return null;
+    }
+  }
+  try {
+    const q = new URL(s).searchParams.get('convite');
+    if (q) return cleanToken(q);
+  } catch {
+    // Não é URL: tenta como token puro abaixo.
+  }
+  return cleanToken(s);
+}
+
 export function clearInviteTokenFromUrl() {
   if (typeof window === 'undefined' || !window.history?.replaceState) return;
   const { pathname, search, hash } = window.location;
@@ -43,7 +77,8 @@ export function clearInviteTokenFromUrl() {
 
 // Chamadas concorrentes com o mesmo token (ex.: StrictMode monta o efeito
 // 2x em dev) aguardam a MESMA promessa: um único POST voa por token.
-// O servidor continua com uso único (só o primeiro resgate vence).
+// O primeiro uso marca o convite; reaberturas vinculam a sessão atual
+// (reentrada) sem tocar na auditoria do 1º uso.
 const inFlight = new Map();
 
 export function acceptInvite(token) {
