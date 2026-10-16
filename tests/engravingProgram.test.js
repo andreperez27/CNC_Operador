@@ -103,6 +103,12 @@ describe('programa Heidenhain — estrutural', () => {
     expect(text).toContain('DR+');
   });
 
+  it('programName explícito (nome por texto) vale no BEGIN/END', () => {
+    const p = buildEngravingProgram({ layout: lay('A'), machining: {}, fontMeta: META, programName: 'andre_1026' });
+    expect(p).toContain('BEGIN PGM andre_1026 MM');
+    expect(p).toMatch(/END PGM andre_1026 MM/);
+  });
+
   it('sem -0 em lugar nenhum', () => {
     const p = prog('ANDRE HENRIQUE', {});
     expect(p).not.toMatch(/-0(?!\d)/);

@@ -8,10 +8,16 @@ import styles from './EngravingPreview.module.css';
 // ângulo crescente na tela, logo sweep-flag 1).
 // Com bloco: o enquadramento une tinta + bloco, desenha o retângulo, a
 // área útil tracejada e o marcador de origem (canto inferior esquerdo).
-export default function EngravingPreview({ strokes, bounds, block = null, origin = null }) {
+export default function EngravingPreview({ strokes, bounds, block = null, origin = null, grooveWidthMm = null, critical = null }) {
   if (!Array.isArray(strokes) || strokes.length === 0 || !bounds) {
     return <div className={styles.placeholder}>Ajuste os parâmetros para visualizar</div>;
   }
+
+  // Área usinada estimada: mesmos paths com a largura real do risco em mm
+  // (o viewBox já está em mm), pontas/junções arredondadas e
+  // semitransparência para a sobreposição aparecer. Sem largura válida,
+  // volta à linha central (trajetória).
+  const wide = typeof grooveWidthMm === 'number' && Number.isFinite(grooveWidthMm) && grooveWidthMm > 0;
 
   const rects = block ? blockOutlines(block) : null;
   const frame = rects
@@ -42,8 +48,28 @@ export default function EngravingPreview({ strokes, bounds, block = null, origin
         <path d={svgPathForLoop(rects.usable)} fill="none" stroke="#8ab4d0" strokeWidth="1" strokeDasharray="4,3" vectorEffect="non-scaling-stroke" />
       )}
       {paths.map((d, i) => (
-        <path key={i} d={d} fill="none" stroke="#38bdf8" strokeWidth="1.5" vectorEffect="non-scaling-stroke" strokeLinejoin="round" strokeLinecap="round" />
+        <path
+          key={i}
+          d={d}
+          fill="none"
+          stroke={wide ? '#f59e0b' : '#38bdf8'}
+          strokeWidth={wide ? grooveWidthMm : 1.5}
+          vectorEffect={wide ? undefined : 'non-scaling-stroke'}
+          strokeOpacity={wide ? 0.45 : 1}
+          strokeLinejoin="round"
+          strokeLinecap="round"
+        />
       ))}
+      {critical && (
+        <circle
+          cx={trimNum(critical.x)}
+          cy={trimNum(-critical.y)}
+          r={trimNum(Math.max(wide ? grooveWidthMm / 2 : 0, arm / 2))}
+          fill="none"
+          stroke="#ef4444"
+          strokeWidth="1.5"
+        />
+      )}
       {origin && (
         <g stroke="#8ab4d0" strokeWidth="1.5" vectorEffect="non-scaling-stroke">
           <circle cx={ox} cy={oy} r={rr} fill="none" />

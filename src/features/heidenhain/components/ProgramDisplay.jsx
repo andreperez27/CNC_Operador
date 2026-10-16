@@ -4,7 +4,7 @@ import { fileExtension } from '../../../core/postprocessors/heidenhain';
 import { buildProgramName } from '../../../core/postprocessors/programName';
 import styles from './ProgramDisplay.module.css';
 
-export default function ProgramDisplay({ program, operationId }) {
+export default function ProgramDisplay({ program, operationId, fileName = null, exportLocked = false, lockNote = null }) {
   const textRef = useRef(null);
 
   const handleCopy = useCallback(() => {
@@ -14,9 +14,9 @@ export default function ProgramDisplay({ program, operationId }) {
 
   const handleExport = useCallback(() => {
     if (!textRef.current) return;
-    const baseName = buildProgramName(operationId);
+    const baseName = fileName || buildProgramName(operationId);
     downloadAsFile(textRef.current.textContent, baseName, fileExtension);
-  }, [operationId]);
+  }, [operationId, fileName]);
 
   if (!program) {
     return (
@@ -32,10 +32,13 @@ export default function ProgramDisplay({ program, operationId }) {
       <div className={styles.header}>
         <div className={styles.title}>Programa Heidenhain</div>
         <div className={styles.buttons}>
-          <button className={styles.actionBtn} onClick={handleExport}>Exportar .H</button>
-          <button className={styles.actionBtn} onClick={handleCopy}>Copiar</button>
+          <button className={styles.actionBtn} onClick={handleExport} disabled={exportLocked} title={exportLocked ? lockNote || 'Exportação bloqueada' : undefined}>Exportar .H</button>
+          <button className={styles.actionBtn} onClick={handleCopy} disabled={exportLocked} title={exportLocked ? lockNote || 'Exportação bloqueada' : undefined}>Copiar</button>
         </div>
       </div>
+      {exportLocked && lockNote && (
+        <div role="alert" style={{ color: 'var(--red)', marginBottom: 8 }}>{lockNote}</div>
+      )}
       <pre ref={textRef} className={styles.code}>{program}</pre>
     </div>
   );

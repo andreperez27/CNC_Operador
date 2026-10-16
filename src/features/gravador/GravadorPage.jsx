@@ -4,15 +4,24 @@ import ProgramDisplay from '../heidenhain/components/ProgramDisplay';
 import { getFont } from '../../core/engraving/fontRepository';
 import { layoutText } from '../../core/engraving/layout';
 import { fitInBlock, anchorInBlock, formatExcess } from '../../core/engraving/fit';
+import { grooveWidth, resolveGrooveWidth, effectiveMargin, describeTool } from '../../core/engraving/groove';
+import { analyzeLegibility, minLegibleHeight, viableRange, canExport, describeWorst } from '../../core/engraving/legibility';
 import { toggleSignText } from './components/engravingPaths';
 import { buildEngravingProgram } from '../../core/engraving/emitHeidenhain';
+import { buildEngravingFileName, sanitizeProgramName } from '../../core/postprocessors/programName';
 import EngravingPreview from './components/EngravingPreview';
 import styles from './GravadorPage.module.css';
 
 const FONT_SLUG = 'traco-simples-10';
 
+const VEE_ANGLES = [10, 15, 20, 25, 30, 40, 45, 60, 90];
+
+const LIMITS_TEXT = 'O resultado também depende de material, batimento, deflexão, desgaste, condições de corte e da geometria real da ferramenta, que pode diferir da nominal. A análise é geométrica e não substitui a simulação da máquina.';
+
 const ABAS = [
-  { id: 'dados', label: 'Dados' },
+  { id: 'texto', label: 'Texto' },
+  { id: 'ferramenta', label: 'Ferramenta' },
+  { id: 'bloco', label: 'Bloco' },
   { id: 'previa', label: 'Prévia' },
   { id: 'programa', label: 'Programa' },
 ];
@@ -33,10 +42,10 @@ function trim(v) {
 }
 
 // Gravador de Textos CNC: texto → layout (mesma geometria da prévia) →
-// programa Heidenhain .H absoluto (v1, sem ISO e sem incremental).
+// programa Heidenhain .H absoluto (fonte v2, sem ISO e sem incremental).
 export default function GravadorPage() {
   const [values, setValues] = useState({
-    text: 'ANDRE HENRIQUE',
+    text: 'CNC OPERADOR',
     height: '10',
     spacing: '0',
     x0: '0',
@@ -44,7 +53,16 @@ export default function GravadorPage() {
     lineFactor: '1.6',
     availW: '',
     availH: '',
-    zGrav: '0',
+    toolKind: 'vee',
+    toolDiam: '1',
+    veeAngle: '60',
+    veeCustom: '',
+    tipKind: 'flat',
+    tipSize: '0.1',
+    maxDiam: '',
+    zSurf: '0',
+    depth: '0.2',
+    measured: '',
     zSeg: '10',
     feed: '2000',
     rpm: '1000',
@@ -54,13 +72,18 @@ export default function GravadorPage() {
     blockH: '',
     margin: '0',
     center: true,
+    fileName: '',
   });
-  const [aba, setAba] = useState('dados');
+  const [aba, setAba] = useState('texto');
+  const [previewMode, setPreviewMode] = useState('usinado');
+  const [ack, setAck] = useState({ key: null, ok: false });
   const [font, setFont] = useState(null);
   const [fontError, setFontError] = useState(null);
   // Altura máxima aplicada como liga/desliga: guarda a altura anterior
   // para reverter. Editar a altura manualmente desliga (usuário assumiu).
   const [maxAtivo, setMaxAtivo] = useState(null);
+  // Mesmo esquema p/ o bloco ajustado ao texto: guarda bloco anterior.
+  const [blocoAtivo, setBlocoAtivo] = useState(null);
 
   useEffect(() => {
     let live = true;
@@ -72,6 +95,7 @@ export default function GravadorPage() {
 
   const onField = (id) => (e) => {
     const v = e.target.value;
+    if ((id === 'blockW' || id === 'blockH') && blocoAtivo) setBlocoAtivo(null);
     setValues((prev) => ({ ...prev, [id]: v }));
   };
 
@@ -101,6 +125,28 @@ export default function GravadorPage() {
     }
   };
 
+  // Bloco: ajusta as dimensões ao texto NO TAMANHO ATUAL (tinta + 2×margem
+  // efetiva), com volta igual ao ajuste da fonte. Editar o bloco à mão
+  // desliga a volta (usuário assumiu).
+  const handleAjustarBloco = () => {
+    if (!layout?.ok) return;
+    if (blocoAtivo) {
+      setValues((prev) => ({ ...prev, blockW: blocoAtivo.prevW, blockH: blocoAtivo.prevH }));
+      setBlocoAtivo(null);
+      return;
+    }
+    const m = blockDims
+      ? blockDims.margin
+      : effectiveMargin(Math.max(0, num(values.margin, 0)), groove.ok ? groove.width : null);
+    const b = layout.value.bounds;
+    setBlocoAtivo({ prevW: values.blockW, prevH: values.blockH });
+    setValues((prev) => ({
+      ...prev,
+      blockW: trim(b.width + 2 * m),
+      blockH: trim(b.height + 2 * m),
+    }));
+  };
+
   const layout = useMemo(() => {
     if (!font) return null;
     try {
@@ -121,14 +167,57 @@ export default function GravadorPage() {
     }
   }, [font, values]);
 
-  // Bloco definido = largura e altura preenchidas e válidas. Sem bloco,
-  // sem encaixe (prévia/programa como antes).
+  // Ferramenta montada dos campos (pura; erro explica o motivo).
+  const toolInfo = useMemo(() => {
+    try {
+      const maxD = values.maxDiam === '' ? null : num(values.maxDiam, NaN);
+      const extra = maxD === null ? {} : { maxDiameter: maxD };
+      let tool;
+      if (values.toolKind === 'flat') {
+        tool = { type: 'flat', diameter: num(values.toolDiam, NaN), ...extra };
+      } else if (values.toolKind === 'ball') {
+        tool = { type: 'ball', diameter: num(values.toolDiam, NaN), ...extra };
+      } else {
+        const angle = values.veeAngle === 'outro' ? num(values.veeCustom, NaN) : Number(values.veeAngle);
+        const tip = values.tipSize === '' ? NaN : num(values.tipSize, NaN);
+        tool = values.tipKind === 'flat'
+          ? { type: 'vee', angle, tipDiameter: tip, ...extra }
+          : { type: 'vee', angle, radius: tip, ...extra };
+      }
+      // Valida já (grooveWidth valida de novo no cálculo).
+      grooveWidth(tool, 0.1);
+      return { ok: true, tool };
+    } catch (e) {
+      return { ok: false, error: e.message };
+    }
+  }, [values.toolKind, values.toolDiam, values.veeAngle, values.veeCustom, values.tipKind, values.tipSize, values.maxDiam]);
+
+  // Largura do risco: calculada da ferramenta+profundidade, ou a medida.
+  const groove = useMemo(() => {
+    if (!toolInfo.ok) return { ok: false, error: toolInfo.error };
+    const depth = num(values.depth, NaN);
+    if (!(depth > 0)) {
+      return { ok: false, warning: 'Profundidade deve ser maior que zero para cortar (aviso, sem estimar largura).' };
+    }
+    try {
+      const calc = grooveWidth(toolInfo.tool, depth);
+      return { ok: true, calc, width: resolveGrooveWidth(values.measured, calc), depth };
+    } catch (e) {
+      return { ok: false, error: e.message };
+    }
+  }, [toolInfo, values.depth, values.measured]);
+
+  const zSurf = num(values.zSurf, 0);
+  const zGrav = groove.ok ? zSurf - groove.depth : zSurf;
+
+  // Bloco definido = largura e altura preenchidas e válidas. Margem efetiva:
+  // maior entre a digitada e metade do risco (quando calculado).
   const blockDims = useMemo(() => {
     const w = optNum(values.blockW);
     const h = optNum(values.blockH);
     if (w === null || h === null || !(w > 0 && h > 0)) return null;
-    return { w, h, margin: Math.max(0, num(values.margin, 0)) };
-  }, [values.blockW, values.blockH, values.margin]);
+    return { w, h, margin: effectiveMargin(Math.max(0, num(values.margin, 0)), groove.ok ? groove.width : null) };
+  }, [values.blockW, values.blockH, values.margin, groove]);
 
   const fit = useMemo(() => {
     if (!font || !layout?.ok || !blockDims) return null;
@@ -161,6 +250,45 @@ export default function GravadorPage() {
     });
   }, [layout, blockDims, values.x0, values.y0, values.center]);
 
+  // Diagnóstico de legibilidade sobre a geometria final + altura mínima
+  // legível (bisseção) e faixa viável (mínima → máxima do bloco).
+  const diag = useMemo(() => {
+    if (!font || !placed || !groove.ok) return null;
+    try {
+      const a = analyzeLegibility(placed, groove.width);
+      const min = minLegibleHeight({
+        text: values.text,
+        font,
+        letterSpacing: num(values.spacing, 0),
+        grooveWidth: groove.width,
+      });
+      return { ok: true, ...a, minLeg: min };
+    } catch (e) {
+      return { ok: false, error: e.message };
+    }
+  }, [font, placed, groove, values.text, values.spacing]);
+
+  const viable = diag && diag.ok && diag.minLeg.legible && fit && fit.maxHeight > 0
+    ? viableRange(diag.minLeg.height, fit.maxHeight)
+    : null;
+
+  // Faixa vazia (mínima além da máxima, ou ilegível) ou diagnóstico
+  // vermelho: nunca dizer "Cabe no bloco" em verde.
+  const rangeEmpty = !!fit && !!diag && diag.ok && (!diag.minLeg.legible || !viable || !viable.viable);
+  const hideFits = rangeEmpty || (!!diag && diag.ok && diag.nivel === 'vermelho');
+
+  const diagKey = diag && diag.ok
+    ? `${diag.nivel}|${String(diag.folgaMinima)}|${values.text}|${groove.ok ? groove.width : 'x'}`
+    : 'sem-diag';
+  const exportOk = diag && diag.ok ? canExport(diag.nivel, ack.key === diagKey && ack.ok) : true;
+
+  // Nome do .H: sugestão pelo texto (5 letras + _MMAA); o operador pode
+  // ajustar antes de gerar. Vale igual p/ o arquivo e p/ o BEGIN/END PGM.
+  const suggestedName = useMemo(() => buildEngravingFileName(values.text), [values.text]);
+  const effName = values.fileName.trim() !== ''
+    ? (sanitizeProgramName(values.fileName) || suggestedName)
+    : suggestedName;
+
   const program = useMemo(() => {
     if (!placed) return null;
     try {
@@ -169,7 +297,7 @@ export default function GravadorPage() {
         value: buildEngravingProgram({
           layout: placed,
           machining: {
-            zGravacao: num(values.zGrav, 0),
+            zGravacao: zGrav,
             zSeguranca: num(values.zSeg, 10),
             feed: num(values.feed, 2000),
             rpm: num(values.rpm, 1000),
@@ -177,6 +305,17 @@ export default function GravadorPage() {
             zInicio: num(values.zStart, 100),
           },
           fontMeta: { slug: font.font.slug, version: font.font.version, name: font.font.name },
+          programName: effName,
+          tooling: toolInfo.ok ? {
+            description: describeTool(toolInfo.tool),
+            depth: groove.ok ? groove.depth : null,
+            zSurf,
+            width: groove.ok ? groove.width : null,
+            measured: groove.ok && values.measured !== '',
+            folga: diag && diag.ok ? diag.folgaMinima : null,
+            nivel: diag && diag.ok ? diag.nivel : null,
+            pior: diag && diag.ok ? diag.pior : null,
+          } : null,
           block: blockDims && fit ? {
             w: blockDims.w,
             h: blockDims.h,
@@ -190,7 +329,7 @@ export default function GravadorPage() {
     } catch (e) {
       return { ok: false, error: e.message };
     }
-  }, [placed, blockDims, fit, font, values]);
+  }, [placed, blockDims, fit, font, values, zGrav, toolInfo, groove, zSurf, diag, effName]);
 
   return (
     <div className="page">
@@ -213,8 +352,8 @@ export default function GravadorPage() {
         ))}
       </div>
 
-      {aba === 'dados' && (
-        <Card title="Dados da gravação">
+      {aba === 'texto' && (
+        <Card title="Texto">
           {!font && !fontError && <div className="info">Carregando fonte…</div>}
           {fontError && (
             <div className="info" role="alert" style={{ color: 'var(--red)' }}>{fontError}</div>
@@ -231,13 +370,143 @@ export default function GravadorPage() {
             />
           </div>
           <div className="fg">
-            <label className="fl" htmlFor="gv-height">Altura (mm)</label>
+            <label className="fl" htmlFor="gv-height">Tamanho da fonte (mm)</label>
             <input id="gv-height" className="fi" type="number" inputMode="decimal" min="0.1" step="any" value={values.height} onChange={onHeight} />
           </div>
           <div className="fg">
             <label className="fl" htmlFor="gv-spacing">Espaçamento extra (mm, sem escala)</label>
             <input id="gv-spacing" className="fi" type="number" inputMode="decimal" step="any" value={values.spacing} onChange={onField('spacing')} />
           </div>
+          {font && (
+            <div className="info">
+              Fonte {font.font.slug} v{font.font.version} — {font.glyphs.length} caracteres suportados:
+              {' '}{font.glyphs.map((g) => (g.char === ' ' ? '␣' : g.char)).join(' ')}
+            </div>
+          )}
+          {layout && !layout.ok && (
+            <div className="info" role="alert" style={{ color: 'var(--red)' }}>{layout.error}</div>
+          )}
+          {program && !program.ok && (
+            <div className="info" role="alert" style={{ color: 'var(--red)' }}>{program.error}</div>
+          )}
+        </Card>
+      )}
+
+      {aba === 'ferramenta' && (
+        <Card title="Ferramenta">
+          <div className="fg">
+            <label className="fl" htmlFor="gv-zsurf">Z da superfície da peça</label>
+            <div className={styles.signRow}>
+              <input id="gv-zsurf" className="fi" type="text" inputMode="decimal" autoComplete="off" value={values.zSurf} onChange={onField('zSurf')} />
+              <button className="btn btn-s" type="button" title="Inverter sinal (+/-)" onClick={() => onToggleSign('zSurf')}>+/−</button>
+            </div>
+          </div>
+          <div className="fg">
+            <label className="fl" htmlFor="gv-depth">Profundidade (mm)</label>
+            <input id="gv-depth" className="fi" type="number" inputMode="decimal" min="0" step="any" value={values.depth} onChange={onField('depth')} />
+          </div>
+          <div className="info">Z de gravação (calculado): {Number.isFinite(zGrav) ? `${trim(zGrav)} mm` : '—'}</div>
+          <div className="fg">
+            <label className="fl" htmlFor="gv-measured">Largura do risco medida (opcional, calibra com a peça)</label>
+            <input id="gv-measured" className="fi" type="number" inputMode="decimal" min="0.01" step="any" value={values.measured} onChange={onField('measured')} />
+          </div>
+          <div className="fg">
+            <label className="fl" htmlFor="gv-zseg">Z de segurança</label>
+            <div className={styles.signRow}>
+              <input id="gv-zseg" className="fi" type="text" inputMode="decimal" autoComplete="off" value={values.zSeg} onChange={onField('zSeg')} />
+              <button className="btn btn-s" type="button" title="Inverter sinal (+/-)" onClick={() => onToggleSign('zSeg')}>+/−</button>
+            </div>
+          </div>
+          <div className="fg">
+            <label className="fl" htmlFor="gv-toolkind">Tipo de ferramenta</label>
+            <select id="gv-toolkind" className="fi" value={values.toolKind} onChange={onField('toolKind')}>
+              <option value="flat">Fresa de topo</option>
+              <option value="ball">Fresa esférica</option>
+              <option value="vee">Fresa de gravação V</option>
+            </select>
+          </div>
+          {values.toolKind !== 'vee' && (
+            <div className="fg">
+              <label className="fl" htmlFor="gv-tooldiam">Diâmetro (mm)</label>
+              <input id="gv-tooldiam" className="fi" type="number" inputMode="decimal" min="0.01" step="any" value={values.toolDiam} onChange={onField('toolDiam')} />
+            </div>
+          )}
+          {values.toolKind === 'vee' && (
+            <>
+              <div className="fg">
+                <label className="fl" htmlFor="gv-angle">Ângulo da ponta (graus, incluído)</label>
+                <select id="gv-angle" className="fi" value={values.veeAngle} onChange={onField('veeAngle')}>
+                  {VEE_ANGLES.map((a) => (
+                    <option key={a} value={String(a)}>{a}°</option>
+                  ))}
+                  <option value="outro">Outro…</option>
+                </select>
+              </div>
+              {values.veeAngle === 'outro' && (
+                <div className="fg">
+                  <label className="fl" htmlFor="gv-custom">Ângulo personalizado (0 a 180)</label>
+                  <input id="gv-custom" className="fi" type="number" inputMode="decimal" min="0.1" max="179.9" step="any" value={values.veeCustom} onChange={onField('veeCustom')} />
+                </div>
+              )}
+              <div className="fg">
+                <label className="fl" htmlFor="gv-tipkind">Formato da ponta</label>
+                <select id="gv-tipkind" className="fi" value={values.tipKind} onChange={onField('tipKind')}>
+                  <option value="flat">Plana (padrão, diâmetro da ponta)</option>
+                  <option value="round">Arredondada (raio da ponta)</option>
+                </select>
+              </div>
+              <div className="fg">
+                <label className="fl" htmlFor="gv-tipsize">
+                  {values.tipKind === 'flat' ? 'Diâmetro da ponta (mm)' : 'Raio da ponta (mm)'}
+                </label>
+                <input id="gv-tipsize" className="fi" type="number" inputMode="decimal" min="0" step="any" value={values.tipSize} onChange={onField('tipSize')} />
+              </div>
+            </>
+          )}
+          <div className="fg">
+            <label className="fl" htmlFor="gv-maxdiam">Diâmetro máximo (opcional; no V o padrão é a haste 3,175)</label>
+            <input id="gv-maxdiam" className="fi" type="number" inputMode="decimal" min="0.01" step="any" value={values.maxDiam} onChange={onField('maxDiam')} />
+          </div>
+          {!toolInfo.ok && (
+            <div className="info" role="alert" style={{ color: 'var(--red)' }}>{toolInfo.error}</div>
+          )}
+          {groove.ok === false && toolInfo.ok && (
+            <div className="info" role="alert" style={{ color: groove.warning ? undefined : 'var(--red)' }}>
+              {groove.warning || groove.error}
+            </div>
+          )}
+          {groove.ok && (
+            <div className="info">
+              Largura do risco: {trim(groove.width)} mm ({values.measured !== '' ? 'medida' : 'calculada'})
+              {groove.width !== groove.calc ? ` — calculada seria ${trim(groove.calc)} mm` : ''}
+            </div>
+          )}
+          {diag && diag.ok && (
+            <div className="info" role="status">
+              Diagnóstico:{' '}
+              <span style={{ color: diag.nivel === 'verde' ? 'var(--green)' : diag.nivel === 'amarelo' ? '#d97706' : 'var(--red)', fontWeight: 700 }}>
+                {diag.nivel.toUpperCase()}
+              </span>
+              {' '}— folga mínima {Number.isFinite(diag.folgaMinima) ? `${trim(diag.folgaMinima)} mm` : '— (sem pares)'}
+              {describeWorst(diag.pior) ? ` (pior ponto: ${describeWorst(diag.pior)})` : ''}
+              {diag.minLeg.legible
+                ? ` · altura mínima legível ${trim(diag.minLeg.height)} mm`
+                : ' · ilegível com esta ferramenta e profundidade'}
+              {viable ? (viable.viable ? ' · faixa viável OK' : ' · faixa viável VAZIA: use ferramenta mais fina ou menos profundidade') : ''}
+              {diag.alertas.slice(0, 3).map((a, i) => (
+                <div key={i}>• {a.causa} {a.sugestao}</div>
+              ))}
+              <div>{LIMITS_TEXT}</div>
+            </div>
+          )}
+          {diag && !diag.ok && (
+            <div className="info" role="alert" style={{ color: 'var(--red)' }}>{diag.error}</div>
+          )}
+        </Card>
+      )}
+
+      {aba === 'bloco' && (
+        <Card title="Bloco">
           <div className="fg">
             <label className="fl" htmlFor="gv-blockw">Bloco — largura (mm, vazio = sem bloco)</label>
             <input id="gv-blockw" className="fi" type="number" inputMode="decimal" min="0.1" step="any" value={values.blockW} onChange={onField('blockW')} />
@@ -262,34 +531,44 @@ export default function GravadorPage() {
               Centralizar no bloco
             </label>
           </div>
-          <div className="fg">
-            <label className="fl" htmlFor="gv-zgrav">Z de gravação (negativo desce)</label>
-            <div className={styles.signRow}>
-              <input id="gv-zgrav" className="fi" type="text" inputMode="decimal" autoComplete="off" value={values.zGrav} onChange={onField('zGrav')} />
-              <button className="btn btn-s" type="button" title="Inverter sinal (+/-)" onClick={() => onToggleSign('zGrav')}>+/−</button>
-            </div>
-          </div>
-          <div className="fg">
-            <label className="fl" htmlFor="gv-zseg">Z de segurança</label>
-            <div className={styles.signRow}>
-              <input id="gv-zseg" className="fi" type="text" inputMode="decimal" autoComplete="off" value={values.zSeg} onChange={onField('zSeg')} />
-              <button className="btn btn-s" type="button" title="Inverter sinal (+/-)" onClick={() => onToggleSign('zSeg')}>+/−</button>
-            </div>
-          </div>
-          <div className="fg">
-            <label className="fl" htmlFor="gv-feed">Avanço (mm/min)</label>
-            <input id="gv-feed" className="fi" type="number" inputMode="decimal" min="1" step="any" value={values.feed} onChange={onField('feed')} />
-          </div>
-          <div className="fg">
-            <label className="fl" htmlFor="gv-rpm">Rotação do fuso (RPM)</label>
-            <input id="gv-rpm" className="fi" type="number" inputMode="decimal" min="1" step="1" value={values.rpm} onChange={onField('rpm')} />
-          </div>
-          <div className="fg">
-            <label className="fl" htmlFor="gv-tool">Ferramenta (número)</label>
-            <input id="gv-tool" className="fi" type="number" inputMode="decimal" min="1" step="1" value={values.tool} onChange={onField('tool')} />
-          </div>
           {blockDims && (
             <div className="info">Com bloco, X/Y é o canto inferior esquerdo do bloco.</div>
+          )}
+          {fit && (
+            <>
+              {hideFits ? (
+                <div className="info" role="alert" style={{ color: 'var(--red)', fontWeight: 700 }}>
+                  Faixa viável vazia: mínima legível{' '}
+                  {diag.minLeg.legible ? `${trim(diag.minLeg.height)} mm` : '— (ilegível com esta ferramenta e profundidade)'}
+                  {diag.minLeg.legible ? `, máxima que cabe ${trim(fit.maxHeight)} mm` : ` (máxima que cabe ${trim(fit.maxHeight)} mm)`}.
+                  Com esta ferramenta e profundidade o texto não fica legível neste bloco.
+                </div>
+              ) : fit.fits ? (
+                <div className="info" style={{ color: 'var(--green)' }}>Cabe no bloco.</div>
+              ) : (
+                <div className="info" role="alert" style={{ color: 'var(--red)' }}>
+                  Não cabe: {formatExcess(fit) || 'sem área útil'}
+                </div>
+              )}
+              <div className="info">
+                Altura máxima que cabe: {fit.maxHeight == null || !(fit.maxHeight > 0)
+                  ? '— (não cabe em nenhuma altura)'
+                  : `${trim(fit.maxHeight)} mm (limitada pela ${fit.limitedBy})`}
+              </div>
+                </>
+          )}
+          {layout?.ok && (
+            <div className="btn-row">
+              <button
+                className="btn btn-s"
+                type="button"
+                onClick={handleAjustarBloco}
+              >
+                {blocoAtivo
+                  ? `VOLTAR PARA ${(blocoAtivo.prevW === '' && blocoAtivo.prevH === '') ? 'anterior' : `${blocoAtivo.prevW || '—'}x${blocoAtivo.prevH || '—'}`}`
+                  : 'AJUSTAR BLOCO AO TEXTO'}
+              </button>
+            </div>
           )}
           <details className={styles.collapse}>
             <summary className={styles.collapseSummary}>Detalhes técnicos</summary>
@@ -324,14 +603,20 @@ export default function GravadorPage() {
                 <label className="fl" htmlFor="gv-zstart">Z início/fim</label>
                 <input id="gv-zstart" className="fi" type="number" inputMode="decimal" step="any" value={values.zStart} onChange={onField('zStart')} />
               </div>
+              <div className="fg">
+                <label className="fl" htmlFor="gv-feed">Avanço (mm/min)</label>
+                <input id="gv-feed" className="fi" type="number" inputMode="decimal" min="1" step="any" value={values.feed} onChange={onField('feed')} />
+              </div>
+              <div className="fg">
+                <label className="fl" htmlFor="gv-rpm">Rotação do fuso (RPM)</label>
+                <input id="gv-rpm" className="fi" type="number" inputMode="decimal" min="1" step="1" value={values.rpm} onChange={onField('rpm')} />
+              </div>
+              <div className="fg">
+                <label className="fl" htmlFor="gv-tool">Ferramenta (número)</label>
+                <input id="gv-tool" className="fi" type="number" inputMode="decimal" min="1" step="1" value={values.tool} onChange={onField('tool')} />
+              </div>
             </div>
           </details>
-          {layout && !layout.ok && (
-            <div className="info" role="alert" style={{ color: 'var(--red)' }}>{layout.error}</div>
-          )}
-          {program && !program.ok && (
-            <div className="info" role="alert" style={{ color: 'var(--red)' }}>{program.error}</div>
-          )}
         </Card>
       )}
 
@@ -343,6 +628,20 @@ export default function GravadorPage() {
             <div className="info" role="alert" style={{ color: 'var(--red)' }}>{layout.error}</div>
           ) : (
             <>
+              <div className={styles.tabs} role="tablist" aria-label="Modo da prévia">
+                {[{ id: 'trajeto', label: 'Trajetória' }, { id: 'usinado', label: 'Área usinada' }].map((m) => (
+                  <button
+                    key={m.id}
+                    type="button"
+                    role="tab"
+                    aria-selected={previewMode === m.id}
+                    className={`${styles.tab} ${previewMode === m.id ? styles.tabActive : ''}`}
+                    onClick={() => setPreviewMode(m.id)}
+                  >
+                    {m.label}
+                  </button>
+                ))}
+              </div>
               <EngravingPreview
                 strokes={placed.strokes}
                 bounds={placed.bounds}
@@ -354,41 +653,45 @@ export default function GravadorPage() {
                   margin: blockDims.margin,
                 } : null}
                 origin={{ x: num(values.x0, 0), y: num(values.y0, 0) }}
+                grooveWidthMm={previewMode === 'usinado' && groove.ok ? groove.width : null}
+                critical={previewMode === 'usinado' && diag && diag.ok && diag.pior ? diag.pior.posicao : null}
               />
               <div className={styles.stats}>
                 {trim(placed.bounds.width)} × {trim(placed.bounds.height)} mm
                 {' · '}{placed.stats.chars} caracteres
                 {' · '}corte {trim(placed.stats.cutLength)} mm
+                {groove.ok && diag && diag.ok && (
+                  <>
+                    {' · '}risco {trim(groove.width)} mm
+                    {toolInfo.ok ? ` (${describeTool(toolInfo.tool)}, prof ${trim(groove.depth)} mm)` : ''}
+                    {' · '}folga {Number.isFinite(diag.folgaMinima) ? `${trim(diag.folgaMinima)} mm` : '—'}
+                    {' · '}mín legível {diag.minLeg.legible ? `${trim(diag.minLeg.height)} mm` : '—'}
+                    {fit && fit.maxHeight > 0 ? ` · máx bloco ${trim(fit.maxHeight)} mm` : ''}
+                  </>
+                )}
               </div>
-              {fit && (
-                <>
-                  {fit.fits ? (
-                    <div className="info" style={{ color: 'var(--green)' }}>Cabe no bloco.</div>
-                  ) : (
-                    <div className="info" role="alert" style={{ color: 'var(--red)' }}>
-                      Não cabe: {formatExcess(fit) || 'sem área útil'}
-                    </div>
-                  )}
-                  <div className="info">
-                    Altura máxima que cabe: {fit.maxHeight == null || !(fit.maxHeight > 0)
-                      ? '— (não cabe em nenhuma altura)'
-                      : `${trim(fit.maxHeight)} mm (limitada pela ${fit.limitedBy})`}
-                  </div>
-                  {fit.maxHeight > 0 && (
-                    <div className="btn-row">
-                      <button
-                        className="btn btn-s"
-                        type="button"
-                        onClick={handleUsarMaxima}
-                      >
-                        {maxAtivo
-                          ? `VOLTAR PARA ${maxAtivo.prev === '' ? 'anterior' : `${maxAtivo.prev} mm`}`
-                          : 'USAR ALTURA MÁXIMA'}
-                      </button>
-                    </div>
-                  )}
-                </>
-              )}
+              <div className="btn-row">
+                {fit && fit.maxHeight > 0 && (
+                  <button
+                    className="btn btn-s"
+                    type="button"
+                    onClick={handleUsarMaxima}
+                  >
+                    {maxAtivo
+                      ? `VOLTAR PARA ${maxAtivo.prev === '' ? 'anterior' : `${maxAtivo.prev} mm`}`
+                      : 'USAR ALTURA MÁXIMA'}
+                  </button>
+                )}
+                <button
+                  className="btn btn-s"
+                  type="button"
+                  onClick={handleAjustarBloco}
+                >
+                  {blocoAtivo
+                    ? `VOLTAR PARA ${(blocoAtivo.prevW === '' && blocoAtivo.prevH === '') ? 'anterior' : `${blocoAtivo.prevW || '—'}x${blocoAtivo.prevH || '—'}`}`
+                    : 'AJUSTAR BLOCO AO TEXTO'}
+                </button>
+              </div>
               {layout.value.warnings.map((w, i) => (
                 <div key={i} className="info">{w}</div>
               ))}
@@ -399,12 +702,58 @@ export default function GravadorPage() {
 
       {aba === 'programa' && (
         <>
-          {fit && !fit.fits && (
+          <div className="fg">
+            <label className="fl" htmlFor="gv-filename">Nome do arquivo (vazio = automático)</label>
+            <input
+              id="gv-filename"
+              className="fi"
+              type="text"
+              inputMode="text"
+              autoComplete="off"
+              placeholder={suggestedName}
+              value={values.fileName}
+              onChange={onField('fileName')}
+            />
+          </div>
+          <div className="info">Arquivo e programa: {effName}.H</div>          {fit && !fit.fits && (
             <div className="info" role="alert" style={{ color: 'var(--red)', marginBottom: 8 }}>
               Não cabe no bloco: {formatExcess(fit) || 'sem área útil'} — o programa sai assim mesmo.
             </div>
           )}
-          <ProgramDisplay program={program?.ok ? program.value : null} operationId="gravacao" />
+          {diag && diag.ok && diag.nivel === 'amarelo' && (
+            <div className="info" role="alert" style={{ color: '#d97706', marginBottom: 8 }}>
+              Diagnóstico amarelo (folga {trim(diag.folgaMinima)} mm
+              {describeWorst(diag.pior) ? `, ${describeWorst(diag.pior)}` : ''}): prossiga com atenção — a exportação segue liberada.
+            </div>
+          )}
+          {diag && diag.ok && diag.nivel === 'vermelho' && (
+            <>
+              <div className="info" role="alert" style={{ color: 'var(--red)', marginBottom: 8 }}>
+                Diagnóstico vermelho (folga {trim(diag.folgaMinima)} mm
+                {describeWorst(diag.pior) ? `, ${describeWorst(diag.pior)}` : ''}): traços ou letras fundidos.
+                Para baixar ou copiar, confirme abaixo.
+              </div>
+              <div className="fg">
+                <label className="fl" htmlFor="gv-ack">
+                  <input
+                    id="gv-ack"
+                    type="checkbox"
+                    checked={ack.key === diagKey && ack.ok}
+                    onChange={(e) => setAck({ key: diagKey, ok: e.target.checked })}
+                    style={{ marginRight: 8 }}
+                  />
+                  Estou ciente do risco e quero exportar assim mesmo.
+                </label>
+              </div>
+            </>
+          )}
+          <ProgramDisplay
+            program={program?.ok ? program.value : null}
+            operationId="gravacao"
+            fileName={effName}
+            exportLocked={!exportOk}
+            lockNote={!exportOk ? 'Exportação bloqueada: confirme o risco acima.' : null}
+          />
         </>
       )}
     </div>

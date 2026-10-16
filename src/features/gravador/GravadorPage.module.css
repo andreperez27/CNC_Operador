@@ -13,10 +13,12 @@
 .tabs {
   display: flex;
   gap: 6px;
+  overflow-x: auto;
 }
 
 .tab {
-  flex: 1;
+  flex: 1 0 auto;
+  white-space: nowrap;
   background: #1a1d24;
   color: #6a8aaa;
   border: 1px solid #2a3040;

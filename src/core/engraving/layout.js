@@ -115,6 +115,7 @@ export function layoutText(text, font, params = {}) {
   const warnings = [];
   const lines = [];
   const accents = [];
+  const lowered = [];
   const ignored = [];
   let provisional = false;
   let cutChars = 0;
@@ -136,23 +137,52 @@ export function layoutText(text, font, params = {}) {
     let lineMinX = Infinity;
     let lineMaxX = -Infinity;
     let charIdx = 0;
+    let glyphOrd = -1;
     for (const rawCh of rawLine) {
       charIdx += 1;
-      const { stripped, upper } = normalizeChar(rawCh);
-      if (stripped !== rawCh && !accents.some((a) => a.from === rawCh)) {
-        accents.push({ from: rawCh, to: upper.length === 1 ? upper : stripped });
+      // Busca do glifo: (a) caractere exato; (b) maiúscula (minúscula sem
+      // glifo próprio, com aviso); (c) remoção de acento, só se não houver
+      // glifo para o caractere acentuado. Nada é descartado ou
+      // normalizado antes da busca: os símbolos (- _ . / + = # ( ) &)
+      // caem no caso (a).
+      let glyph = glyphs.get(rawCh);
+      let key = rawCh;
+      const upper = rawCh.toUpperCase();
+      if (!glyph && upper !== rawCh && upper.length === 1) {
+        glyph = glyphs.get(upper);
+        if (glyph) {
+          key = upper;
+          if (!lowered.some((l) => l.from === rawCh)) lowered.push({ from: rawCh, to: upper });
+        }
       }
-      const glyph = upper.length === 1 ? glyphs.get(upper) : undefined;
+      if (!glyph) {
+        const { stripped } = normalizeChar(rawCh);
+        const plain = stripped.toUpperCase();
+        if (plain.length === 1 && (stripped !== rawCh || plain !== upper)) {
+          glyph = glyphs.get(plain);
+          if (glyph) {
+            key = plain;
+            if (!accents.some((a) => a.from === rawCh)) accents.push({ from: rawCh, to: plain });
+          }
+        }
+      }
       if (!glyph) {
         if (!ignored.includes(rawCh)) ignored.push(rawCh);
         continue;
       }
-      normLine += upper;
+      normLine += key;
       if (glyph.provisional) provisional = true;
       if (glyph.strokes.length > 0) {
         cutChars += 1;
         if (firstInk < 0) firstInk = charIdx;
         lastInk = charIdx;
+      }
+      // gi = ordinal do glifo com tinta na linha: agrupa os traços de cada
+      // ocorrência para a análise de legibilidade (intra vs entre).
+      let gi = -1;
+      if (glyph.strokes.length > 0) {
+        glyphOrd += 1;
+        gi = glyphOrd;
       }
       for (const st of glyph.strokes) {
         const from = [cursorX + st.from[0] * s, yBase + st.from[1] * s];
@@ -175,7 +205,7 @@ export function layoutText(text, font, params = {}) {
           sampleSeg(cur, sg, eatBoth);
           cur = sg.to;
         }
-        strokes.push({ from, segs });
+        strokes.push({ from, segs, ch: key, line: li, gi });
       }
       cursorX += glyph.advance * s + letterSpacing;
     }
@@ -194,6 +224,9 @@ export function layoutText(text, font, params = {}) {
 
   if (accents.length > 0) {
     warnings.push(`Acentos removidos: ${accents.map((a) => `${a.from}→${a.to}`).join(', ')}`);
+  }
+  if (lowered.length > 0) {
+    warnings.push(`Minúsculas sem glifo próprio: ${lowered.map((l) => `${l.from}→${l.to}`).join(', ')}`);
   }
   if (ignored.length > 0) {
     warnings.push(`Ignorados sem glifo: ${ignored.join(', ')}`);

@@ -3,6 +3,7 @@ import { validateFont } from '../src/core/engraving/validateFont';
 import { getFont, embeddedFontRepository } from '../src/core/engraving/fontRepository';
 import { layoutText, describeArc, measureCutLength } from '../src/core/engraving/layout';
 import fontData from '../src/core/engraving/fonts/traco-simples-10.v1.json';
+import fontV2 from '../src/core/engraving/fonts/traco-simples-10.v2.json';
 import golden from './fixtures/andre-henrique.golden.json';
 
 /**
@@ -74,10 +75,10 @@ describe('validateFont — teste 5 (dados da fonte)', () => {
 });
 
 describe('fontRepository — getFont', () => {
-  it('resolve a fonte embutida validada', async () => {
+  it('resolve a fonte embutida validada (v2 por padrão)', async () => {
     const f = await getFont('traco-simples-10');
-    expect(f.glyphs).toHaveLength(37);
-    expect(f.font.version).toBe(1);
+    expect(f.glyphs).toHaveLength(47);
+    expect(f.font.version).toBe(2);
   });
 
   it('slug desconhecido rejeita', async () => {
@@ -112,11 +113,15 @@ describe('layoutText — escala (teste 2)', () => {
 });
 
 describe('layoutText — texto (teste 6)', () => {
-  it('minúsculas equivalem a maiúsculas', () => {
+  it('minúsculas usam a maiúscula, com aviso; símbolos entram exatos sem aviso', () => {
     const a = layoutText('andre', fontData, { height: 10 });
     const b = layoutText('ANDRE', fontData, { height: 10 });
     expectStrokesClose(a.strokes, b.strokes, 9);
+    expect(a.warnings.some((w) => w.includes('Minúscula'))).toBe(true);
     expect(b.warnings).toEqual([]);
+    const s = layoutText('A-B', fontV2, { height: 10 });
+    expect(s.warnings).toEqual([]);
+    expect(s.strokes.map((st) => st.ch).join('')).toBe('A-B');
   });
 
   it('acentos removidos com aviso; inexistente avisa e não avança', () => {

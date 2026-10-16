@@ -6,8 +6,9 @@ import { svgPathForStroke, toggleSignText, unionBounds } from '../src/features/g
  * Regressão da prévia SVG: para cada arco, o ponto médio do arco DESENHADO
  * (recuperado do path via flags) convertido de volta para a máquina bate
  * com o ponto médio calculado de centro + sentido (tol 0,001). Cobre D
- * (DR+), R (DR−), 2 (225°) e S (270°). Qualquer inversão de flags (sweep
- * ou large-arc) desloca o ponto médio e quebra este teste.
+ * (DR+), R (DR−), 2 (225°), S (270°) e os símbolos v2 '(' , ')' (90°),
+ * '.' (180° exatos, limite do large-arc) e '&' (253,7°). Qualquer inversão
+ * de flags (sweep ou large-arc) desloca o ponto médio e quebra este teste.
  */
 
 // Arcos reais da fonte (from + segmento), com as flags ESPERADAS corretas.
@@ -31,6 +32,26 @@ const ARCS = [
     id: 'S (270°)', from: [5.0, 7.5],
     seg: { t: 'A', to: [2.5, 5.0], c: [2.5, 7.5], cw: false },
     largeArc: 1, sweepFlag: 0,
+  },
+  {
+    id: "'(' (90°)", from: [2.5, 10.0],
+    seg: { t: 'A', to: [0.0, 7.5], c: [2.5, 7.5], cw: false },
+    largeArc: 0, sweepFlag: 0,
+  },
+  {
+    id: "')' (90°)", from: [0.0, 10.0],
+    seg: { t: 'A', to: [2.5, 7.5], c: [0.0, 7.5], cw: true },
+    largeArc: 0, sweepFlag: 1,
+  },
+  {
+    id: "'.' (180° exatos)", from: [0.0, 0.6],
+    seg: { t: 'A', to: [1.2, 0.6], c: [0.6, 0.6], cw: false },
+    largeArc: 0, sweepFlag: 0,
+  },
+  {
+    id: "'&' (253,7°)", from: [0.8, 6.8],
+    seg: { t: 'A', to: [4.0, 6.8], c: [2.4, 8.0], cw: true },
+    largeArc: 1, sweepFlag: 1,
   },
 ];
 

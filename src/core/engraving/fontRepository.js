@@ -8,7 +8,9 @@
  * e, entre válidas, vale a mais alta.
  */
 import { validateFont } from './validateFont';
-import tracoSimples10 from './fonts/traco-simples-10.v1.json';
+// Piso embutido: v2 (47 caracteres). A v1 segue no repo, imutável,
+// só para testes de compatibilidade.
+import tracoSimples10 from './fonts/traco-simples-10.v2.json';
 
 const EMBEDDED = {
   'traco-simples-10': tracoSimples10,
