@@ -34,3 +34,6 @@ coverage/
 *.njsproj
 *.sln
 *.sw?
+
+# Supabase local (link/projeto temporario, nunca versionar)
+supabase/.temp/
