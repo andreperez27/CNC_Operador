@@ -5,6 +5,7 @@ import { getFont } from '../../core/engraving/fontRepository';
 import { layoutText } from '../../core/engraving/layout';
 import { fitInBlock, anchorInBlock, formatExcess } from '../../core/engraving/fit';
 import { grooveWidth, resolveGrooveWidth, effectiveMargin, describeTool } from '../../core/engraving/groove';
+import { plungeWarning, effectivePlunge, effectiveApproach } from '../../core/engraving/toolpath';
 import { analyzeLegibility, minLegibleHeight, viableRange, canExport, describeWorst } from '../../core/engraving/legibility';
 import { toggleSignText } from './components/engravingPaths';
 import { buildEngravingProgram } from '../../core/engraving/emitHeidenhain';
@@ -63,8 +64,10 @@ export default function GravadorPage() {
     zSurf: '0',
     depth: '0.2',
     measured: '',
+    plunge: '',
+    approach: '2',
     zSeg: '10',
-    feed: '2000',
+    feed: '500',
     rpm: '1000',
     tool: '2',
     zStart: '100',
@@ -113,6 +116,18 @@ export default function GravadorPage() {
   const onToggleSign = (id) => {
     setValues((prev) => ({ ...prev, [id]: toggleSignText(prev[id]) }));
   };
+
+  // Atalho: mergulho como percentual do corte (campo segue editavel).
+  const setPlungePct = (p) => {
+    const f = num(values.feed, NaN);
+    if (!(f > 0)) return;
+    setValues((prev) => ({ ...prev, plunge: String(Number((f * p / 100).toFixed(3))) }));
+  };
+
+  const plungeHint = plungeWarning(
+    num(values.feed, NaN),
+    values.plunge === '' ? null : num(values.plunge, NaN),
+  );
 
   const handleUsarMaxima = () => {
     if (!fit || !(fit.maxHeight > 0)) return;
@@ -210,6 +225,13 @@ export default function GravadorPage() {
   const zSurf = num(values.zSurf, 0);
   const zGrav = groove.ok ? zSurf - groove.depth : zSurf;
 
+  // Efetivos que saem no .H (iguais aos do nucleo, inclusive no automatico).
+  const feedNum = num(values.feed, NaN);
+  const effPlunge = effectivePlunge(feedNum, values.plunge === '' ? null : num(values.plunge, NaN));
+  const effApproach = effectiveApproach(zGrav, values.approach === '' ? null : num(values.approach, NaN));
+  const plungeAuto = values.plunge === '';
+  const approachAuto = values.approach === '';
+
   // Bloco definido = largura e altura preenchidas e válidas. Margem efetiva:
   // maior entre a digitada e metade do risco (quando calculado).
   const blockDims = useMemo(() => {
@@ -299,10 +321,12 @@ export default function GravadorPage() {
           machining: {
             zGravacao: zGrav,
             zSeguranca: num(values.zSeg, 10),
-            feed: num(values.feed, 2000),
+            feed: num(values.feed, 500),
             rpm: num(values.rpm, 1000),
             ferramenta: num(values.tool, 2),
             zInicio: num(values.zStart, 100),
+            plungeFeed: values.plunge === '' ? null : num(values.plunge, NaN),
+            approach: values.approach === '' ? null : num(values.approach, NaN),
           },
           fontMeta: { slug: font.font.slug, version: font.font.version, name: font.font.name },
           programName: effName,
@@ -409,6 +433,28 @@ export default function GravadorPage() {
           <div className="fg">
             <label className="fl" htmlFor="gv-measured">Largura do risco medida (opcional, calibra com a peça)</label>
             <input id="gv-measured" className="fi" type="number" inputMode="decimal" min="0.01" step="any" value={values.measured} onChange={onField('measured')} />
+          </div>
+          <div className="fg">
+            <label className="fl" htmlFor="gv-plunge">Avanco de mergulho (mm/min, vazio = 25% do corte)</label>
+            <input id="gv-plunge" className="fi" type="number" inputMode="decimal" min="0.01" step="any" value={values.plunge} onChange={onField('plunge')} />
+          </div>
+          <div className="btn-row" role="group" aria-label="Atalho percentual do corte">
+            {[10, 15, 25, 30].map((p) => (
+              <button key={p} className="btn btn-s" type="button" onClick={() => setPlungePct(p)}>
+                {p}% do corte
+              </button>
+            ))}
+          </div>
+          {plungeHint && (
+            <div className="info" role="status">{plungeHint}</div>
+          )}
+          <div className="fg">
+            <label className="fl" htmlFor="gv-approach">Altura de aproximacao (mm, padrao 2 acima da superficie)</label>
+            <input id="gv-approach" className="fi" type="number" inputMode="decimal" min="0.1" step="any" value={values.approach} onChange={onField('approach')} />
+          </div>
+          <div className="info">
+            Mergulho efetivo: {Number.isFinite(effPlunge) ? `${trim(effPlunge)} mm${plungeAuto ? ' (automatico 25%)' : ''}` : '-'}
+            {' - '}Aproximacao efetiva: {Number.isFinite(effApproach) ? `Z ${trim(effApproach)}${approachAuto ? ' (automatica)' : ''}` : '-'}
           </div>
           <div className="fg">
             <label className="fl" htmlFor="gv-zseg">Z de segurança</label>
