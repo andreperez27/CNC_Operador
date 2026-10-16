@@ -5,12 +5,12 @@ import { toQParams, DEFAULT_MAP, EXTERNAL_CHAMFER_MAP, EXTERNAL_RADIUS_MAP } fro
 import { fileExtension } from '../../core/postprocessors/heidenhain';
 import { buildProgramName } from '../../core/postprocessors/programName';
 import { downloadAsFile } from '../../core/export/downloadProgram';
+import { formatResultNumber, summarizeModel, originLabel } from './resultSummary';
 import ChamferForm from './components/ChamferForm';
 import RadiusForm from './components/RadiusForm';
 import ValidationPanel from './components/ValidationPanel';
 import ViewOptions from '../heidenhain/components/ViewOptions';
 import QParamsDisplay from '../heidenhain/components/QParamsDisplay';
-import ProgramDisplay from '../heidenhain/components/ProgramDisplay';
 import ChamferExternalPreview from '../heidenhain/preview/ChamferExternalPreview';
 import ChamferInternalPreview from '../heidenhain/preview/ChamferInternalPreview';
 import RadiusPreview from '../gcode/preview/RadiusPreview';
@@ -47,26 +47,38 @@ const RADIUS_DEFAULT_VALUES = {
   av: 600,
 };
 
-const DEFAULT_VIEW_OPTIONS = { origin: true, startPoint: true, endPoint: true, passes: true, safety: true };
-
 const OPERATION_TITLES = {
   chanfro: 'G-Code Rapido — Chanfro',
   raio: 'G-Code Rapido — Raio (canonico)',
 };
 
-const OPERATION_SUBTITLES = {
-  chanfro: 'Chanfro externo ou interno (bolsao) em uma passada de planejamento multiplos passes — calculo canonico, validacao estruturada e programa Heidenhain (.H).',
-  raio: 'Raio de arredondamento externo (aresta reta) ou interno (canto de bolsao) — pipeline canonico (referencia: planilha de setor), trajetoria em circulo de raio rho = R + r, validacao estruturada e programa Heidenhain (.H).',
+// Camadas essenciais ligadas por padrão (mobile): trajetória, ferramenta e
+// perfil final. As demais ficam atrás do botão "Camadas". O ViewOptions
+// trata `!== false` como ligado, por isso as não-essenciais vêm false.
+const DEFAULT_VIEW_OPTIONS = {
+  tool: true,
+  trajectory: true,
+  finProfile: true,
+  origin: false,
+  startPoint: false,
+  endPoint: false,
+  passes: false,
+  safety: false,
+  rawProfile: false,
+  toolCenter: false,
 };
 
-function formatNumber(value, digits = 3) {
-  return Number(value.toFixed(digits)).toLocaleString('pt-BR');
-}
+const ABAS = [
+  { id: 'dados', label: 'Dados' },
+  { id: 'previa', label: 'Prévia' },
+  { id: 'programa', label: 'Programa' },
+];
 
 export default function GCodeRapidoPage() {
   const [values, setValues] = useState(DEFAULT_VALUES);
   const [radiusValues, setRadiusValues] = useState(RADIUS_DEFAULT_VALUES);
   const [viewOptions, setViewOptions] = useState(DEFAULT_VIEW_OPTIONS);
+  const [aba, setAba] = useState('dados');
 
   const isRaio = values.operacao === 'raio';
 
@@ -118,7 +130,6 @@ export default function GCodeRapidoPage() {
   );
 
   const chamferProgram = useMemo(() => (model ? buildChamferProgram(model) : null), [model]);
-  const incReal = model && model.passes.length > 1 ? Math.abs(model.passes[1].y - model.passes[0].y) : 0;
 
   // ── Raio ───────────────────────────────────────────────────────────
   const radiusInput = useMemo(() => {
@@ -157,6 +168,7 @@ export default function GCodeRapidoPage() {
 
   const activeModel = isRaio ? radiusModel : model;
   const activeProgram = isRaio ? radiusProgram : chamferProgram;
+  const activeQParams = isRaio ? radiusQParams : chamferQParams;
 
   const handleExport = useCallback(() => {
     if (!activeProgram || !activeModel) return;
@@ -169,6 +181,14 @@ export default function GCodeRapidoPage() {
   }, [activeProgram]);
 
   const ChamferPreview = model?.type === 'internal' ? ChamferInternalPreview : ChamferExternalPreview;
+
+  // Linha de resumo fixa da aba Dados (passes, profundidade total, contato)
+  // + rodapé Plano/Origem. Vêm do modelo canônico; sem modelo, traços.
+  const resumo = summarizeModel(activeModel);
+  const tipoAtivo = isRaio ? radiusValues.tipo : values.tipo;
+  const rodape = isRaio
+    ? `Fresa tórica · Plano XZ · Origem (zero peça): ${originLabel(tipoAtivo)}`
+    : `Plano XZ · Origem (zero peça): ${originLabel(tipoAtivo)}`;
 
   return (
     <div className={styles.page}>
@@ -190,10 +210,49 @@ export default function GCodeRapidoPage() {
           </button>
         </div>
         <h1 className={styles.title}>{OPERATION_TITLES[values.operacao]}</h1>
-        <p className={styles.subtitle}>{OPERATION_SUBTITLES[values.operacao]}</p>
       </div>
 
-      <div className={styles.topSection}>
+      <div className={styles.tipoRow} role="tablist" aria-label="Seções da página">
+        {ABAS.map(({ id, label }) => (
+          <button
+            key={id}
+            type="button"
+            role="tab"
+            aria-selected={aba === id}
+            className={`${styles.opBtn} ${aba === id ? styles.opBtnActive : ''}`}
+            onClick={() => setAba(id)}
+          >
+            {label}
+          </button>
+        ))}
+      </div>
+
+      {aba === 'dados' && (
+        <div className={styles.panel}>
+          {isRaio
+            ? <RadiusForm
+                values={radiusValues}
+                errors={radiusResult ? radiusResult.validation.errors : []}
+                validOverall={radiusResult ? radiusResult.valid : false}
+                onChange={handleRadiusField}
+              />
+            : <ChamferForm
+                values={values}
+                errors={result ? result.validation.errors : []}
+                validOverall={result ? result.valid : false}
+                onChange={handleField}
+              />}
+          {isRaio ? <ValidationPanel result={radiusResult} quiet /> : <ValidationPanel result={result} quiet />}
+          <div className={styles.summaryBar}>
+            Passes: <b>{resumo.passes}</b>
+            {' · '}Prof. total: <b>{resumo.profZ} mm</b>
+            {' · '}Contato: <b>{resumo.contato}</b>
+          </div>
+          <div className={styles.footNote}>{rodape}</div>
+        </div>
+      )}
+
+      {aba === 'previa' && (
         <div className={styles.previewCol}>
           <div className={styles.previewBox}>
             {isRaio
@@ -202,133 +261,106 @@ export default function GCodeRapidoPage() {
                   : <RadiusPreview model={radiusModel} options={viewOptions} />)
               : <ChamferPreview model={model} options={viewOptions} />}
           </div>
-          <ViewOptions options={viewOptions} onChange={setViewOptions} />
+          <details className={styles.collapse}>
+            <summary className={styles.collapseSummary}>Camadas</summary>
+            <div className={styles.collapseBody}>
+              <ViewOptions options={viewOptions} onChange={setViewOptions} />
+            </div>
+          </details>
         </div>
-
-        <div className={styles.sideCol}>
-          <div className={styles.panel}>
-            {isRaio
-              ? <RadiusForm
-                  values={radiusValues}
-                  errors={radiusResult ? radiusResult.validation.errors : []}
-                  validOverall={radiusResult ? radiusResult.valid : false}
-                  onChange={handleRadiusField}
-                />
-              : <ChamferForm
-                  values={values}
-                  errors={result ? result.validation.errors : []}
-                  validOverall={result ? result.valid : false}
-                  onChange={handleField}
-                />}
-          </div>
-          {isRaio ? <ValidationPanel result={radiusResult} /> : <ValidationPanel result={result} />}
-        </div>
-      </div>
-
-      {isRaio && radiusModel && (
-        <>
-          <div className={styles.results}>
-            <div className={styles.resultItem}>
-              <span className={styles.resultLabel}>Status de contato</span>
-              <span className={styles.resultValue}>{radiusModel.contact.contactPoint ? 'OK' : '—'}</span>
-            </div>
-            <div className={styles.resultItem}>
-              <span className={styles.resultLabel}>rho = R + r (raio da trajetoria)</span>
-              <span className={styles.resultValue}>{formatNumber(radiusModel.rho, 6)} mm</span>
-            </div>
-            <div className={styles.resultItem}>
-              <span className={styles.resultLabel}>Q4 (X do centro da trajetoria)</span>
-              <span className={styles.resultValue}>{formatNumber(radiusModel.xCenter)} mm</span>
-            </div>
-            <div className={styles.resultItem}>
-              <span className={styles.resultLabel}>Q6 (X no ultimo passe, z=R)</span>
-              <span className={styles.resultValue}>{formatNumber(radiusModel.q6, 9)} mm</span>
-            </div>
-            <div className={styles.resultItem}>
-              <span className={styles.resultLabel}>Numero de passes</span>
-              <span className={styles.resultValue}>{radiusModel.nPasses}</span>
-            </div>
-            <div className={styles.resultItem}>
-              <span className={styles.resultLabel}>Incremento real</span>
-              <span className={styles.resultValue}>{formatNumber(radiusModel.incReal, 6)} mm</span>
-            </div>
-            <div className={styles.resultItem}>
-              <span className={styles.resultLabel}>Profundidade total</span>
-              <span className={styles.resultValue}>{formatNumber(radiusModel.profZ)} mm</span>
-            </div>
-          </div>
-
-          <div className={styles.section}>
-            <div className={styles.sectionHeader}>
-              <div className={styles.sectionTitle}>Parametros Q</div>
-              <span className={styles.sectionHint}>Trajetoria calculada (mesma usada no preview)</span>
-            </div>
-            <QParamsDisplay qParams={radiusQParams} />
-          </div>
-        </>
       )}
 
-      {!isRaio && model && (
-        <>
-          <div className={styles.results}>
-            <div className={styles.resultItem}>
-              <span className={styles.resultLabel}>Reff (raio efetivo)</span>
-              <span className={styles.resultValue}>{formatNumber(model.toolCornerR)} mm</span>
-            </div>
-            <div className={styles.resultItem}>
-              <span className={styles.resultLabel}>Numero de passes</span>
-              <span className={styles.resultValue}>{model.nPasses}</span>
-            </div>
-            <div className={styles.resultItem}>
-              <span className={styles.resultLabel}>Incremento real</span>
-              <span className={styles.resultValue}>{formatNumber(incReal, 6)} mm</span>
-            </div>
-            <div className={styles.resultItem}>
-              <span className={styles.resultLabel}>X do centro da ferramenta</span>
-              <span className={styles.resultValue}>{formatNumber(model.contact.toolCenter.x)} mm</span>
-            </div>
-            <div className={styles.resultItem}>
-              <span className={styles.resultLabel}>Profundidade total</span>
-              <span className={styles.resultValue}>{formatNumber(model.profZ)} mm</span>
-            </div>
-            <div className={styles.resultItem}>
-              <span className={styles.resultLabel}>Largura horizontal</span>
-              <span className={styles.resultValue}>{formatNumber(model.largX)} mm</span>
-            </div>
-            <div className={styles.resultItem}>
-              <span className={styles.resultLabel}>cot(A)</span>
-              <span className={styles.resultValue}>{formatNumber(model.cotA, 6)}</span>
-            </div>
-            <div className={styles.resultItem}>
-              <span className={styles.resultLabel}>Ponto de contato</span>
-              <span className={styles.resultValue}>
-                ({formatNumber(model.contact.contactPoint.x)}, {formatNumber(model.contact.contactPoint.z)})
-              </span>
-            </div>
+      {aba === 'programa' && (
+        <div className={styles.section}>
+          <div className={styles.buttons}>
+            <button className={styles.actionBtn} onClick={handleExport} disabled={!activeProgram}>
+              Exportar .H
+            </button>
+            <button className={styles.actionBtn} onClick={handleCopy} disabled={!activeProgram}>
+              Copiar
+            </button>
           </div>
-
-          <div className={styles.section}>
-            <div className={styles.sectionHeader}>
-              <div className={styles.sectionTitle}>Parametros Q</div>
-              <span className={styles.sectionHint}>Trajetoria calculada (mesma usada no preview)</span>
+          {activeProgram
+            ? <pre className={styles.programCode}>{activeProgram}</pre>
+            : <div className={styles.programEmpty}>Preencha os parametros para gerar o programa</div>}
+          <details className={styles.collapse}>
+            <summary className={styles.collapseSummary}>Detalhes técnicos</summary>
+            <div className={styles.collapseBody}>
+              <QParamsDisplay qParams={activeQParams} />
+              {isRaio && radiusModel && (
+                <div className={styles.results}>
+                  <div className={styles.resultItem}>
+                    <span className={styles.resultLabel}>Status de contato</span>
+                    <span className={styles.resultValue}>{radiusModel.contact.contactPoint ? 'OK' : '—'}</span>
+                  </div>
+                  <div className={styles.resultItem}>
+                    <span className={styles.resultLabel}>rho = R + r (raio da trajetoria)</span>
+                    <span className={styles.resultValue}>{formatResultNumber(radiusModel.rho, 6)} mm</span>
+                  </div>
+                  <div className={styles.resultItem}>
+                    <span className={styles.resultLabel}>Q4 (X do centro da trajetoria)</span>
+                    <span className={styles.resultValue}>{formatResultNumber(radiusModel.xCenter)} mm</span>
+                  </div>
+                  <div className={styles.resultItem}>
+                    <span className={styles.resultLabel}>Q6 (X no ultimo passe, z=R)</span>
+                    <span className={styles.resultValue}>{formatResultNumber(radiusModel.q6, 9)} mm</span>
+                  </div>
+                  <div className={styles.resultItem}>
+                    <span className={styles.resultLabel}>Numero de passes</span>
+                    <span className={styles.resultValue}>{radiusModel.nPasses}</span>
+                  </div>
+                  <div className={styles.resultItem}>
+                    <span className={styles.resultLabel}>Incremento real</span>
+                    <span className={styles.resultValue}>{formatResultNumber(radiusModel.incReal, 6)} mm</span>
+                  </div>
+                  <div className={styles.resultItem}>
+                    <span className={styles.resultLabel}>Profundidade total</span>
+                    <span className={styles.resultValue}>{formatResultNumber(radiusModel.profZ)} mm</span>
+                  </div>
+                </div>
+              )}
+              {!isRaio && model && (
+                <div className={styles.results}>
+                  <div className={styles.resultItem}>
+                    <span className={styles.resultLabel}>Reff (raio efetivo)</span>
+                    <span className={styles.resultValue}>{formatResultNumber(model.toolCornerR)} mm</span>
+                  </div>
+                  <div className={styles.resultItem}>
+                    <span className={styles.resultLabel}>Numero de passes</span>
+                    <span className={styles.resultValue}>{model.nPasses}</span>
+                  </div>
+                  <div className={styles.resultItem}>
+                    <span className={styles.resultLabel}>Incremento real</span>
+                    <span className={styles.resultValue}>{formatResultNumber(model.incReal, 6)} mm</span>
+                  </div>
+                  <div className={styles.resultItem}>
+                    <span className={styles.resultLabel}>X do centro da ferramenta</span>
+                    <span className={styles.resultValue}>{formatResultNumber(model.contact.toolCenter.x)} mm</span>
+                  </div>
+                  <div className={styles.resultItem}>
+                    <span className={styles.resultLabel}>Profundidade total</span>
+                    <span className={styles.resultValue}>{formatResultNumber(model.profZ)} mm</span>
+                  </div>
+                  <div className={styles.resultItem}>
+                    <span className={styles.resultLabel}>Largura horizontal</span>
+                    <span className={styles.resultValue}>{formatResultNumber(model.largX)} mm</span>
+                  </div>
+                  <div className={styles.resultItem}>
+                    <span className={styles.resultLabel}>cot(A)</span>
+                    <span className={styles.resultValue}>{formatResultNumber(model.cotA, 6)}</span>
+                  </div>
+                  <div className={styles.resultItem}>
+                    <span className={styles.resultLabel}>Ponto de contato</span>
+                    <span className={styles.resultValue}>
+                      ({formatResultNumber(model.contact.contactPoint.x)}, {formatResultNumber(model.contact.contactPoint.z)})
+                    </span>
+                  </div>
+                </div>
+              )}
             </div>
-            <QParamsDisplay qParams={chamferQParams} />
-          </div>
-        </>
-      )}
-
-      <div className={styles.section}>
-        <div className={styles.sectionHeader}>
-          <div className={styles.sectionTitle}>Programa Heidenhain</div>
-          {activeProgram && (
-            <div className={styles.buttons}>
-              <button className={styles.actionBtn} onClick={handleExport}>Exportar .H</button>
-              <button className={styles.actionBtn} onClick={handleCopy}>Copiar</button>
-            </div>
-          )}
+          </details>
         </div>
-        <ProgramDisplay program={activeProgram} operationId={activeModel?.operationId} />
-      </div>
+      )}
     </div>
   );
 }

@@ -14,11 +14,6 @@ const FIELDS = {
   av:   { label: 'Avanco (mm/min)', min: 1, step: '1' },
 };
 
-const ORIGIN_LABEL = {
-  external: 'Vertice da regiao (aresta X0 / topo Z0)',
-  internal: 'Canto do bolsao (parede X0 / fundo Z0)',
-};
-
 function Field({ id, value, errors, validOverall, onFieldChange }) {
   const def = FIELDS[id];
   const err = errors.find((e) => e.field === id);
@@ -61,42 +56,48 @@ export default function ChamferForm({ values, errors, validOverall, onChange }) 
 
   return (
     <form className={styles.form} onSubmit={(e) => e.preventDefault()}>
-      <div className={styles.sectionLabel}>Formato da aresta</div>
-      <div className={styles.tipoRow}>
-        <button
-          type="button"
-          className={`${styles.opBtn} ${!isCircular ? styles.opBtnActive : ''}`}
-          onClick={() => onChange('formato', 'reta')}
-        >
-          Reta
-        </button>
-        <span className={styles.tipoItem} title="chanfro/raio ao redor de furo ou ressalto circular, usando interpolacao CC/CP">
-          <button
-            type="button"
-            className={`${styles.opBtn} ${isCircular ? styles.opBtnActive : ''} ${styles.opBtnDisabled}`}
-            disabled
-          >
-            Circular <span className={styles.badgeSoon}>em breve</span>
-          </button>
-        </span>
-      </div>
+      <div className={styles.selectRow}>
+        <div className={styles.selectGroup}>
+          <div className={styles.sectionLabel}>Formato</div>
+          <div className={styles.tipoRow}>
+            <button
+              type="button"
+              className={`${styles.opBtn} ${!isCircular ? styles.opBtnActive : ''}`}
+              onClick={() => onChange('formato', 'reta')}
+            >
+              Reta
+            </button>
+            <span className={styles.tipoItem} title="chanfro/raio ao redor de furo ou ressalto circular, usando interpolacao CC/CP">
+              <button
+                type="button"
+                className={`${styles.opBtn} ${isCircular ? styles.opBtnActive : ''} ${styles.opBtnDisabled}`}
+                disabled
+              >
+                Circular <span className={styles.badgeSoon}>em breve</span>
+              </button>
+            </span>
+          </div>
+        </div>
 
-      <div className={styles.sectionLabel}>Tipo de chanfro</div>
-      <div className={styles.tipoRow}>
-        <button
-          type="button"
-          className={`${styles.opBtn} ${!isInternal ? styles.opBtnActive : ''}`}
-          onClick={() => onChange('tipo', 'external')}
-        >
-          Externo
-        </button>
-        <button
-          type="button"
-          className={`${styles.opBtn} ${isInternal ? styles.opBtnActive : ''}`}
-          onClick={() => onChange('tipo', 'internal')}
-        >
-          Interno (bolsao)
-        </button>
+        <div className={styles.selectGroup}>
+          <div className={styles.sectionLabel}>Tipo</div>
+          <div className={styles.tipoRow}>
+            <button
+              type="button"
+              className={`${styles.opBtn} ${!isInternal ? styles.opBtnActive : ''}`}
+              onClick={() => onChange('tipo', 'external')}
+            >
+              Externo
+            </button>
+            <button
+              type="button"
+              className={`${styles.opBtn} ${isInternal ? styles.opBtnActive : ''}`}
+              onClick={() => onChange('tipo', 'internal')}
+            >
+              Interno
+            </button>
+          </div>
+        </div>
       </div>
 
       <div className={styles.grid}>
@@ -137,16 +138,6 @@ export default function ChamferForm({ values, errors, validOverall, onChange }) 
         <Field id="av" value={values.av} errors={errors} validOverall={validOverall} onFieldChange={handleField} />
       </div>
 
-      <div className={styles.infoBox}>
-        <div className={styles.infoRow}>
-          <span className={styles.infoLabel}>Plano</span>
-          <span className={styles.infoValue}>XZ</span>
-        </div>
-        <div className={styles.infoRow}>
-          <span className={styles.infoLabel}>Origem (zero peca)</span>
-          <span className={styles.infoValue}>{ORIGIN_LABEL[values.tipo]}</span>
-        </div>
-      </div>
     </form>
   );
 }

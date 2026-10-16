@@ -26,26 +26,12 @@
   max-width: 70ch;
 }
 
-.topSection {
-  display: flex;
-  gap: 14px;
-  align-items: flex-start;
-}
-
 .previewCol {
   flex: 1;
   display: flex;
   flex-direction: column;
   gap: 10px;
   min-width: 0;
-}
-
-.sideCol {
-  width: 340px;
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
-  flex-shrink: 0;
 }
 
 .panel {
@@ -102,25 +88,6 @@
   gap: 10px;
 }
 
-.sectionHeader {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 10px;
-  flex-wrap: wrap;
-}
-
-.sectionTitle {
-  font-size: 14px;
-  font-weight: 600;
-  color: #e6edf3;
-}
-
-.sectionHint {
-  font-size: 12px;
-  color: #5d7a96;
-}
-
 .buttons {
   display: flex;
   gap: 8px;
@@ -143,6 +110,120 @@
 .actionBtn:hover {
   background: #183324;
   border-color: #2ea362;
+}
+
+.actionBtn:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.actionBtn:disabled:hover {
+  background: #12261c;
+  border-color: #1f5c3a;
+}
+
+/* Linha compacta de seletores (Formato + Tipo lado a lado, mobile). */
+.selectRow {
+  display: flex;
+  gap: 8px;
+}
+
+.selectGroup {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.selectGroup .tipoRow {
+  flex-wrap: nowrap;
+}
+
+/* Linha de resumo fixa no fim da aba Dados + rodapé Plano/Origem. */
+.summaryBar {
+  font-size: 12.5px;
+  color: #8ab4d0;
+  background: #0a0e14;
+  border: 1px solid #21262d;
+  border-radius: 4px;
+  padding: 8px 10px;
+  font-family: 'Share Tech Mono', monospace;
+}
+
+.summaryBar b {
+  color: #38bdf8;
+  font-weight: 600;
+}
+
+.footNote {
+  font-size: 11px;
+  color: #5d7a96;
+}
+
+/* Blocos recolhíveis (Camadas, Detalhes técnicos): <details> nativo. */
+.collapse {
+  border: 1px solid #21262d;
+  border-radius: 6px;
+  background: #0d1117;
+}
+
+.collapseSummary {
+  list-style: none;
+  cursor: pointer;
+  padding: 10px 12px;
+  min-height: 44px;
+  display: flex;
+  align-items: center;
+  font-size: 13px;
+  font-weight: 600;
+  color: #8ab4d0;
+}
+
+.collapseSummary::-webkit-details-marker {
+  display: none;
+}
+
+.collapseSummary::before {
+  content: '▸';
+  color: #5d7a96;
+  margin-right: 8px;
+}
+
+details[open] > .collapseSummary::before {
+  content: '▾';
+}
+
+.collapseBody {
+  padding: 0 12px 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+/* Texto do programa: uma única vez, com rolagem interna limitada. */
+.programCode {
+  background: #080a0d;
+  border: 1px solid #141c26;
+  border-radius: 4px;
+  padding: 12px;
+  margin: 0;
+  font-family: 'Share Tech Mono', monospace;
+  font-size: 11px;
+  line-height: 1.5;
+  color: #c0d0e0;
+  white-space: pre;
+  overflow: auto;
+  max-height: 320px;
+}
+
+.programEmpty {
+  font-family: 'Share Tech Mono', monospace;
+  font-size: 11px;
+  color: #4a6a8a;
+  padding: 12px;
+  border: 1px dashed #2a3040;
+  border-radius: 4px;
 }
 
 .form {
@@ -289,42 +370,13 @@
   font-size: 12px;
 }
 
-.infoBox {
-  border: 1px dashed #2a3040;
-  border-radius: 4px;
-  padding: 8px 10px;
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-}
-
-.infoRow {
-  display: flex;
-  justify-content: space-between;
-  gap: 8px;
-  font-size: 12px;
-}
-
-.infoLabel {
-  color: #5d7a96;
-}
-
-.infoValue {
-  color: #8ab4d0;
-  text-align: right;
-}
-
 @media (max-width: 900px) {
-  .topSection {
-    flex-direction: column;
-  }
-
-  .sideCol {
-    width: 100%;
-  }
-
   .tipoRow {
     flex-wrap: wrap;
+  }
+
+  .selectGroup .tipoRow {
+    flex-wrap: nowrap;
   }
 }
 
@@ -339,10 +391,5 @@
 
   .results {
     grid-template-columns: 1fr;
-  }
-
-  .sectionHeader {
-    flex-direction: column;
-    align-items: stretch;
   }
 }

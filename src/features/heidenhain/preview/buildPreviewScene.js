@@ -188,15 +188,18 @@ export function buildChamferPreviewScene(model, kind) {
     const raw = [xMin, yTop, xMax, yTop, xMax, yBot, xMin, yBot];
     workpiece = { raw, finished: fin, corner: cornerPx, wallTop: { x: cornerPx.x, y: yTop }, floorEnd: { x: xMin, y: cornerPx.y } };
   } else {
-    const topSurfPx = Apx;
-    const vertFacePx = Bpx;
-    const wpLeft = Math.min(topSurfPx.x - pad, origin.x - s * largX - 40);
-    const wpRight = origin.x + pad;
-    const wpTop = origin.y - 26;
-    const wpBottom = vertFacePx.y + 56;
-    const fin = [wpLeft, wpTop, topSurfPx.x, topSurfPx.y, vertFacePx.x, vertFacePx.y, wpRight, wpBottom, wpLeft, wpBottom];
-    const raw = [wpLeft, wpTop, wpRight, wpTop, wpRight, wpBottom, wpLeft, wpBottom];
-    workpiece = { raw, finished: fin, corner: origin, wallTop: { x: origin.x, y: wpTop }, floorEnd: { x: wpLeft, y: origin.y } };
+    // Peça como QUADRADO com origem (X0/Z0) no vértice superior direito
+    // (topo da peça). O chanfro é cortado nesse canto: A na aresta de cima,
+    // B na aresta direita. Cru (raw) = quadrado cheio; final (fin) =
+    // quadrado menos o triângulo do chanfro. Lado S com folga de leitura
+    // (3× a maior dimensão do chanfro).
+    const side = Math.max(largX, profZ, 1e-6) * 3;
+    const sqTL = P(-side, 0);
+    const sqBR = P(0, side);
+    const sqBL = P(-side, side);
+    const fin = [sqTL.x, sqTL.y, Apx.x, Apx.y, Bpx.x, Bpx.y, sqBR.x, sqBR.y, sqBL.x, sqBL.y];
+    const raw = [sqTL.x, sqTL.y, origin.x, origin.y, sqBR.x, sqBR.y, sqBL.x, sqBL.y];
+    workpiece = { raw, finished: fin, corner: origin, wallTop: { x: (sqTL.x + origin.x) / 2, y: origin.y }, floorEnd: { x: sqTL.x, y: origin.y } };
   }
 
   // Linha do chanfro estendida (clamp no canvas)

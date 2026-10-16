@@ -71,6 +71,48 @@ describe('contrato modelo canônico → previews Heidenhain (mesma trajetória)'
     expect(m.dims.profZ).toBe(4);
   });
 
+  it('peça externa é um quadrado com origem no vértice superior direito', () => {
+    // Peça = quadrado com (X0/Z0) no canto superior direito (topo).
+    // Cru = quadrado cheio; final = quadrado menos o triângulo do chanfro
+    // (A na aresta de cima, B na aresta direita).
+    const { valid, model } = solve('external');
+    expect(valid).toBe(true);
+    const m = buildChamferExternalPreviewModel(model);
+    assertNoNaN(m);
+    const pairs = [];
+    for (let i = 0; i < m.workpiece.finished.length; i += 2) {
+      pairs.push({ x: m.workpiece.finished[i], y: m.workpiece.finished[i + 1] });
+    }
+    expect(pairs).toHaveLength(5);
+    const [TL, A, B, BR, BL] = pairs;
+    const O = m.origin;
+    // A e B são o chanfro (mesmos do destaque)
+    expect(A.x).toBeCloseTo(m.chamferHighlight.x1, 9);
+    expect(A.y).toBeCloseTo(m.chamferHighlight.y1, 9);
+    expect(B.x).toBeCloseTo(m.chamferHighlight.x2, 9);
+    expect(B.y).toBeCloseTo(m.chamferHighlight.y2, 9);
+    // Origem no vértice superior direito; A à esquerda na mesma linha
+    expect(O.x).toBeGreaterThan(A.x);
+    expect(TL.y).toBeCloseTo(O.y, 9);
+    expect(TL.x).toBeLessThan(A.x);
+    // Aresta direita vertical (x da origem) descendo além de B
+    expect(BR.x).toBeCloseTo(O.x, 9);
+    expect(BR.y).toBeGreaterThan(B.y);
+    // Fundo horizontal e lateral esquerda fechando o quadrado
+    expect(BL.x).toBeCloseTo(TL.x, 9);
+    expect(BL.y).toBeCloseTo(BR.y, 9);
+    // Quadrado de verdade: lados iguais em px (escala uniforme)
+    expect(BR.y - TL.y).toBeCloseTo(O.x - TL.x, 6);
+    // Cru: mesmo quadrado, com a origem como segundo vértice
+    const raw = [];
+    for (let i = 0; i < m.workpiece.raw.length; i += 2) {
+      raw.push({ x: m.workpiece.raw[i], y: m.workpiece.raw[i + 1] });
+    }
+    expect(raw).toHaveLength(4);
+    expect(raw[1].x).toBeCloseTo(O.x, 9);
+    expect(raw[1].y).toBeCloseTo(O.y, 9);
+  });
+
   it('modelo inválido nunca chega ao preview (model=null)', () => {
     const badInputs = [
       { ...BASE, type: 'external', width: 5, angle: 0 },

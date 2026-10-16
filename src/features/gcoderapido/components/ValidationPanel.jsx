@@ -5,11 +5,14 @@ const SEVERITY_LABEL = {
   WARNING: 'aviso',
 };
 
-export default function ValidationPanel({ result }) {
+export default function ValidationPanel({ result, quiet = false }) {
   if (!result) return null;
   const { validation } = result;
   if (validation.errors.length === 0 && validation.warnings.length === 0) {
-    if (!result.valid) return null;
+    // G-Code Rápido (mobile) usa quiet: sem faixa verde de "tudo certo",
+    // só erro/aviso ocupa espaço. RoscasPage não passa quiet e mantém o
+    // comportamento atual.
+    if (quiet || !result.valid) return null;
     return (
       <div className={`${styles.panel} ${styles.ok}`}>
         <span className={styles.icon}>✓</span>

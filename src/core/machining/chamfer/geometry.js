@@ -15,6 +15,9 @@
  *   cotA  = largX/profZ     cotangente (passo X por mm de Z)
  *   Reff  = raio efetivo da ferramenta no contato
  *   xCentro = −largX + Reff/sen(A)     (X do centro no topo, Z0)
+ *   Âncora de tangência no INÍCIO do chanfro (A = topo, ponto onde o corte
+ *   deve começar). A varredura dos passes (reta paralela tangente, única)
+ *   parte de s_1 = Reff·cotA + z_1/senA — aproxima-se de A com Reff pequeno.
  *
  * INTERNO (origem: canto do bolsão, parede X0 / fundo Z0):
  *   xCentro  = sen(A)·Reff              (X do centro no topo do chanfro)
@@ -99,7 +102,7 @@ export function chamferGeometry(type, input) {
   const chMidZ = profZ / 2;
 
   const contactGeo = buildContactGeometry(
-    { x: chMidX, z: chMidZ },
+    { x: -largX, z: 0 },
     normalFromAngle(angRad),
     tangentFromAngle(angRad),
     Reff
@@ -128,7 +131,7 @@ export function chamferGeometry(type, input) {
     tangency: {
       center: { x: contactGeo.toolCenter.x, z: contactGeo.toolCenter.z },
       radius: Reff,
-      point: { x: chMidX, z: chMidZ },
+      point: { x: -largX, z: 0 },
     },
     trajectory: {
       start: { x: xCentro, z: -5 },
