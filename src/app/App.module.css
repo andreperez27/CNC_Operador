@@ -13,6 +13,17 @@
   animation: fadeIn .2s ease;
 }
 
+.offlineBadge {
+  margin: 8px 14px 0;
+  padding: 6px 10px;
+  border: 1px dashed #5d7a96;
+  border-radius: 4px;
+  font-size: 12px;
+  letter-spacing: 1px;
+  color: #8ab4d0;
+  text-align: center;
+}
+
 .loading {
   padding: 40px 0;
   text-align: center;

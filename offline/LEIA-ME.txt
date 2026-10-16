@@ -1,0 +1,57 @@
+CNC Operador - edicao offline (pen-drive)
+==========================================
+
+O que e: o mesmo aplicativo da internet, empacotado em um unico
+arquivo para rodar SEM internet, direto do pen-drive, sem instalar nada.
+
+Como usar:
+1. Copie esta pasta inteira (CNC_Operador) para o pen-drive, do jeito
+   que ela veio.
+2. De dois cliques em "Abrir CNC Operador.bat".
+3. Funciona em qualquer letra de unidade (D:, E:, F: ...) e em pastas
+   com espaco no nome.
+
+Navegador portatil (opcional, recomendado):
+- No PC da fabrica (Windows 7): use o Firefox Portable Legacy 115,
+  pasta "FirefoxPortableLegacy115" na raiz do pen-drive (como veio).
+  Nao e preciso mexer em nada: o .bat acha sozinho.
+- Alternativa: Baixe o instalador offline do Google Chrome
+  (https://www.google.com/chrome/ -> "Chrome para outro dispositivo")
+  ou um Chromium portatil (ex.: https://portableapps.com/apps/internet/chromium_portable).
+- Extraia e coloque o executavel DIRETO na pasta "navegador", com um
+  destes nomes: chrome.exe, msedge.exe ou chromium.exe.
+- Sem isso, o .bat usa o Edge ou Chrome instalado no PC; em ultimo
+  caso, abre no navegador padrao.
+- Na primeira abertura e criada sozinha a pasta "perfil": e nela que
+  ficam os dados do navegador. Nada sai do pen-drive.
+- Evite acentos e os caracteres & % # no nome da pasta (espacos e
+  parenteses funcionam, o resto pode quebrar a linha de comando).
+
+Windows 7 (PC alvo antigo, precisa do SP1)
+- Use navegador portatil Firefox Legacy 115, pasta
+  "FirefoxPortableLegacy115" na raiz do pen-drive (como veio).
+- O Edge instalado so serve se for versao 109 ou anterior (Edge atual
+  exige Windows 10/11). Na duvida, prefira o portatil 109.
+- O app foi gerado com alvo compativel com o Chrome 109: nenhuma
+  funcao mais nova que essa versao e usada pelo codigo.
+
+Notas:
+- A faixa "Edicao offline" no topo mostra a versao e a data do build.
+- Nao ha login nem convite nesta edicao: todas as abas abrem direto.
+- A versao da internet (GitHub Pages) nao muda por causa disto.
+- O instalador .paf.exe e os dados de perfil de testes anteriores
+  (Edge/Chrome dentro de perfil\) nao fazem parte da entrega e nao
+  precisam ir para a fabrica.
+- Antes de levar o pen-drive para a fabrica, apague a pasta perfil\
+  (ela sera recriada sozinha no primeiro uso, ja no PC certo).
+- Se o Windows mostrar aviso de seguranca sobre o .bat, e porque ele
+  veio de outro PC: clique com o botao direito > Propriedades >
+  "Desbloquear" (ou "Permitir"), ou confirme a execucao.
+
+Roteiro de aceite (internet desligada):
+1. Copie para outra letra de unidade e para pasta com espaco
+   (ex.: E:\Teste (1)\CNC_Operador).
+2. Abra pelo .bat usando o Firefox portatil e confira a etiqueta
+   "Edicao offline" no topo.
+3. Abra as 5 abas, gere um G-Code e baixe o .H.
+4. Confira o F12 (console) sem erros de rede, service worker ou Supabase.

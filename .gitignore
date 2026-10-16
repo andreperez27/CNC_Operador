@@ -10,6 +10,7 @@ lerna-debug.log*
 node_modules
 dist
 dist-ssr
+dist-offline
 *.local
 
 # Variáveis de ambiente (o projeto é offline-first; se um dia existirem, não versionar)
