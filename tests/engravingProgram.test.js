@@ -197,7 +197,7 @@ function parseProgram(text) {
   const drifts = [];
   for (const raw of text.split('\n')) {
     const line = raw.replace(/^\d+\s+/, '');
-    if (/^(;|BEGIN|END|TOOL|FN|LBL)/.test(line)) continue;
+    if (/^(;|BEGIN|END|TOOL|FN|LBL|BLK)/.test(line)) continue;
     const nums = [...line.matchAll(/([XYZ])\s*([+-]?[\d,]+)/g)].map((m) => [m[1], Number(m[2].replace(',', '.'))]);
     const get = (k) => nums.find((n) => n[0] === k)?.[1];
     if (line.startsWith('CC ')) {
@@ -252,5 +252,100 @@ describe('texto longo em absoluto: sem deriva (teste 4 adaptado)', () => {
     expect(plast[1]).toBeCloseTo(end[1], 3);
     const again = prog(text);
     expect(again).toBe(prog(text));
+  });
+});
+
+describe('BLK FORM 0.1 / 0.2 — casca do bloco', () => {
+  const tooling = { description: 'V 60graus ponta 0,2 mm', depth: 0.2, zSurf: 0 };
+  const block = { w: 75, h: 15, margin: 0, x0: 0, y0: 0, fits: true, overW: 0, overH: 0 };
+
+  const progComBlk = (opts = {}) => buildEngravingProgram({
+    layout: lay('ANDRE 123'),
+    machining: { feed: 500 },
+    fontMeta: META,
+    tooling,
+    block,
+    ...opts,
+  });
+
+  it('ordem: BEGIN PGM, BLK FORM 0.1, BLK FORM 0.2, comentários, TOOL CALL', () => {
+    const lines = progComBlk().split('\n').map((l) => l.replace(/^\d+\s+/, ''));
+    const iBegin = lines.findIndex((l) => l.startsWith('BEGIN PGM'));
+    const i01 = lines.findIndex((l) => l.startsWith('BLK FORM 0.1'));
+    const i02 = lines.findIndex((l) => l.startsWith('BLK FORM 0.2'));
+    const iComment = lines.findIndex((l) => l.startsWith('; Gravador'));
+    const iTool = lines.findIndex((l) => l.startsWith('TOOL CALL'));
+
+    expect(iBegin).toBeGreaterThanOrEqual(0);
+    expect(i01).toBe(iBegin + 1);
+    expect(i02).toBe(i01 + 1);
+    expect(iComment).toBeGreaterThan(i02);
+    expect(iTool).toBeGreaterThan(iComment);
+  });
+
+  it('numeração sequencial: as duas linhas entram como blocos 1 e 2', () => {
+    const lines = progComBlk().split('\n');
+    expect(lines[0]).toMatch(/^0\s+BEGIN PGM/);
+    expect(lines[1]).toMatch(/^1\s+BLK FORM 0\.1/);
+    expect(lines[2]).toMatch(/^2\s+BLK FORM 0\.2/);
+  });
+
+  it('bloco 75x15, profundidade 0,2 → Z-5,000 e Z+0,000', () => {
+    const p = progComBlk({ tooling: { ...tooling, depth: 0.2, zSurf: 0 }, block: { ...block, w: 75, h: 15 } });
+    expect(p).toContain('BLK FORM 0.1 Z X+0,000 Y+0,000 Z-5,000');
+    expect(p).toContain('BLK FORM 0.2 X+75,000 Y+15,000 Z+0,000');
+  });
+
+  it('profundidade 6 → Z-7,000', () => {
+    const p = progComBlk({ tooling: { ...tooling, depth: 6, zSurf: 0 } });
+    expect(p).toContain('BLK FORM 0.1 Z X+0,000 Y+0,000 Z-7,000');
+    expect(p).toContain('BLK FORM 0.2 X+75,000 Y+15,000 Z+0,000');
+  });
+
+  it('zSurf = 10 desloca os dois Z', () => {
+    const p = progComBlk({ tooling: { ...tooling, depth: 0.2, zSurf: 10 } });
+    expect(p).toContain('BLK FORM 0.1 Z X+0,000 Y+0,000 Z+5,000');
+    expect(p).toContain('BLK FORM 0.2 X+75,000 Y+15,000 Z+10,000');
+  });
+
+  it('origem do bloco fora do zero entra nos dois pontos', () => {
+    const p = progComBlk({ block: { ...block, x0: 10, y0: 5 } });
+    expect(p).toContain('BLK FORM 0.1 Z X+10,000 Y+5,000 Z-5,000');
+    expect(p).toContain('BLK FORM 0.2 X+85,000 Y+20,000 Z+0,000');
+  });
+
+  it('decimal sai com sinal e vírgula', () => {
+    const p = progComBlk({ block: { ...block, w: 75.5 } });
+    expect(p).toContain('BLK FORM 0.2 X+75,500 Y+15,000 Z+0,000');
+  });
+
+  it('sem -0 e sem caractere não ASCII', () => {
+    const p = progComBlk();
+    const linhas = p.split('\n').filter((l) => l.includes('BLK FORM'));
+    expect(linhas.length).toBe(2);
+    linhas.forEach((l) => expect(l).not.toMatch(/-0(?!\d)/));
+    expect(p).not.toMatch(/-0(?!\d)/);
+    expect([...p].every((ch) => ch.codePointAt(0) <= 0x7f)).toBe(true);
+  });
+
+  it('sem bloco → sem BLK FORM', () => {
+    expect(progComBlk({ block: null })).not.toContain('BLK FORM');
+  });
+
+  it('bloco sem largura/altura válidas → sem BLK FORM', () => {
+    expect(progComBlk({ block: { ...block, w: undefined } })).not.toContain('BLK FORM');
+    expect(progComBlk({ block: { ...block, h: 0 } })).not.toContain('BLK FORM');
+  });
+
+  it('sem profundidade conhecida → sem BLK FORM', () => {
+    expect(progComBlk({ tooling: { ...tooling, depth: null } })).not.toContain('BLK FORM');
+  });
+
+  it('linhas BLK FORM não quebram o parser (ida e volta)', () => {
+    const comBlk = parseProgram(progComBlk());
+    const semBlk = parseProgram(prog('ANDRE 123'));
+    expect(comBlk.pts).toEqual(semBlk.pts);
+    expect(comBlk.centers).toEqual(semBlk.centers);
+    expect(comBlk.drifts).toEqual(semBlk.drifts);
   });
 });

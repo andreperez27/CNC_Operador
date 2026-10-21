@@ -344,6 +344,8 @@ export default function GravadorPage() {
             w: blockDims.w,
             h: blockDims.h,
             margin: blockDims.margin,
+            x0: num(values.x0, 0),
+            y0: num(values.y0, 0),
             fits: fit.fits,
             overW: fit.overW,
             overH: fit.overH,

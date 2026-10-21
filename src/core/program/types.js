@@ -46,6 +46,13 @@ export const TYPES = {
    *  `{ type, w: number, l: number, h: number }` (positive extents) */
   BLK_FORM: 'blkForm',
 
+  /** Envelope by two corner points, emitted as BLK FORM 0.1 (min) and
+   *  BLK FORM 0.2 (max) - one block per line (the stock BLK_FORM packs
+   *  both lines in a single block). Used by the engraving to declare the
+   *  workpiece block around the text.
+   *  `{ type, formType: 'form01'|'form02', x: number, y: number, z: number }` */
+  BLK_FORM_PTS: 'blkFormPts',
+
   /** Tool call with spindle speed.
    *  `{ type, tool: number, speed: number, axis?: string }` */
   TOOL_CALL: 'toolCall',

@@ -29,10 +29,13 @@ function indent(block) {
 /**
  * Central formatter for every numeric value emitted by this postprocessor.
  * Converts the JavaScript decimal point to the comma used by the control.
+ * Keeps the program pattern (3 decimals, ex.: "100,000") and never emits
+ * a negative zero: a value that rounds to zero is printed as "+0,000".
  */
 function formatDecimal(value, decimals) {
-  const sign = value < 0 ? '-' : '+';
-  const num = Math.abs(value).toFixed(decimals).replace('.', ',');
+  const rounded = Number(value.toFixed(decimals));
+  const sign = rounded < 0 ? '-' : '+';
+  const num = Math.abs(rounded).toFixed(decimals).replace('.', ',');
   return sign + num;
 }
 
@@ -66,11 +69,30 @@ function fmtStock(value) {
 }
 
 function emitBlkForm(block) {
+  // Formato legado: extents negativos (uma unica linha, com as duas
+  // linhas 0.1/0.2 dentro do mesmo bloco).
   const neg = (v) => fmtStock(-v);
   return (
     'BLK FORM 0.1 Z X' + neg(block.w) + ' Y' + neg(block.l) + ' Z' + neg(block.h) +
     '\n' +
     'BLK FORM 0.2 X+0 Y+0 Z+0'
+  );
+}
+
+/**
+ * Envelope by corner points (gravacao): 0.1 = ponto minimo, 0.2 = ponto
+ * maximo. Um bloco por linha, numerado pelo postprocessor. O 0.1 leva o
+ * "Z" do plano (como no formato legado) e os dois pontos usam o mesmo
+ * formatador do programa (sinal + virgula + 3 casas).
+ */
+function emitBlkFormPts(block) {
+  const form = block.formType === 'form02' ? '0.2' : '0.1';
+  const plane = block.formType === 'form02' ? '' : 'Z ';
+  return (
+    'BLK FORM ' + form + ' ' + plane +
+    'X' + formatDecimal(block.x, 3) +
+    ' Y' + formatDecimal(block.y, 3) +
+    ' Z' + formatDecimal(block.z, 3)
   );
 }
 
@@ -191,6 +213,7 @@ const EMITTERS = {
   define: emitDefine,
   fn0: emitFn0,
   blkForm: emitBlkForm,
+  blkFormPts: emitBlkFormPts,
   toolCall: emitToolCall,
   assign: emitAssign,
   label: emitLabel,

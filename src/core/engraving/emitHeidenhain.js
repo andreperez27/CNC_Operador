@@ -34,9 +34,38 @@ export function toAscii(s) {
 }
 
 /**
+ * BLK FORM 0.1/0.2: casca do bloco de gravacao, em dois pontos (minimo e
+ * maximo). O minimo e a origem real do texto (canto inferior esquerdo do
+ * bloco) e o maximo e o outro canto, somando largura e altura.
+ *
+ * Z do ponto minimo = zSurf - max(5, ceil(profundidade) + 1): 5 mm de
+ * folga minima de seguranca ou 1 mm acima da profundidade, o que for
+ * maior. O Z do ponto maximo e a superficie da peca (zSurf).
+ *
+ * Sem bloco valido (largura/altura) ou sem profundidade conhecida, nao ha
+ * BLK FORM - o programa sai sem a casca (e o usuario e avisado no relatorio).
+ *
+ * @returns array de 2 blocos (0.1 e 0.2) ou [].
+ */
+export function buildBlkFormShell({ block, tooling }) {
+  if (!block || !tooling) return [];
+  const { w, h } = block;
+  if (!(Number.isFinite(w) && w > 0 && Number.isFinite(h) && h > 0)) return [];
+  if (!Number.isFinite(tooling.depth)) return [];
+  const zSurf = Number.isFinite(tooling.zSurf) ? tooling.zSurf : 0;
+  const x0 = Number.isFinite(block.x0) ? block.x0 : 0;
+  const y0 = Number.isFinite(block.y0) ? block.y0 : 0;
+  const zMin = zSurf - Math.max(5, Math.ceil(tooling.depth) + 1);
+  return [
+    createBlock(TYPES.BLK_FORM_PTS, { formType: 'form01', x: x0, y: y0, z: zMin }),
+    createBlock(TYPES.BLK_FORM_PTS, { formType: 'form02', x: x0 + w, y: y0 + h, z: zSurf }),
+  ];
+}
+
+/**
  * @param {object} args { layout, machining?, fontMeta? ({slug, version,
  *   name}), programName?, tooling?, block? ({ w, h, margin, fits, overW,
- *   overH }) }
+ *   overH, x0?, y0? }) }
  *   tooling? ({ description, depth?, zSurf?, width?, measured?, folga?,
  *   nivel?, pior? }): linhas de ferramenta e diagnostico no cabecalho.
  *   Com bloco: registra sempre as dimensoes; se nao couber, acrescenta o
@@ -47,7 +76,8 @@ export function buildEngravingProgram({ layout, machining = {}, fontMeta = null,
   const { blocks, machining: m } = buildToolpath(layout, machining);
   const meta = fontMeta || { slug: '?', version: '?', name: '?' };
   // Numeros do cabecalho: no maximo 3 casas, virgula decimal (igual ao corpo).
-  const hnum = (v) => String(Number(v.toFixed(3))).replace('.', ',');
+  // Valores nao finitos viram "?" (bloco invalido nao pode derrubar o programa).
+  const hnum = (v) => (Number.isFinite(v) ? String(Number(v.toFixed(3))).replace('.', ',') : '?');
 
   const headLines = [
     'Gravador de Textos CNC',
@@ -84,6 +114,9 @@ export function buildEngravingProgram({ layout, machining = {}, fontMeta = null,
   }
 
   const head = [
+    // BLK FORM 0.1 / 0.2 (casca do bloco): logo depois do BEGIN PGM,
+    // antes dos comentarios e do TOOL CALL.
+    ...buildBlkFormShell({ block, tooling }),
     createBlock(TYPES.COMMENT, { lines: headLines.map(toAscii) }),
     createBlock(TYPES.TOOL_CALL, { tool: m.ferramenta, axis: 'Z', speed: m.rpm }),
     createBlock(TYPES.RAPID, { coords: { z: round3(m.zInicio) }, mcode: 'M3' }),
